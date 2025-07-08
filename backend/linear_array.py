@@ -127,9 +127,12 @@ class LinearArray():
         cs_idx = np.asarray(dG_cs == 1).nonzero()[0] # idx of peaks and nulls
         idx_ = np.asarray(cs_idx == idx_peak).nonzero()[0][0]
         idx_null_L, idx_null_R= cs_idx[idx_-1],cs_idx[idx_+1]
-        idx_3dB_R = idx_peak + np.argmin(np.abs(G[idx_peak:idx_null_R] - peak + 3))
-        idx_3dB_L = idx_null_L + np.argmin(np.abs(G[idx_null_L:idx_peak] - peak + 3))
-        HPBW = theta_deg[idx_3dB_R] - theta_deg[idx_3dB_L]    
+        try:
+            idx_3dB_R = idx_peak + np.argmin(np.abs(G[idx_peak:idx_null_R] - peak + 3))
+            idx_3dB_L = idx_null_L + np.argmin(np.abs(G[idx_null_L:idx_peak] - peak + 3))
+            HPBW = theta_deg[idx_3dB_R] - theta_deg[idx_3dB_L]    
+        except:
+            HPBW = 0
         try:
             SLL = peak - np.max([np.max(G[0:idx_null_L]),np.max(G[idx_null_R:])])
         except:

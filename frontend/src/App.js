@@ -23,6 +23,7 @@ function App() {
   
   // Linear array analysis parameters
   const [numElem, setNumElem] = useState(8);                    // Number of array elements
+  const [numElemError, setNumElemError] = useState('');         // Error message for numElem
   const [elementSpacing, setElementSpacing] = useState(0.5);    // Element spacing in wavelengths
   const [scanAngle, setScanAngle] = useState(0);                // Beam scan angle in degrees
   const [elementPattern, setElementPattern] = useState(true);   // Apply element pattern (cosine envelope)
@@ -297,7 +298,7 @@ function App() {
       // Only set yMax automatically if there are no kept traces
       // Otherwise, let the trace-based yMax logic handle it
       if (traces.length === 0) {
-        setYMax(result.ymax);
+      setYMax(result.ymax);
       }
       setXStep('30');
       setYStep('10');
@@ -325,8 +326,7 @@ function App() {
     // Only trigger if all required fields are valid numbers and not empty
     if (
       activeTab === 'linear' &&
-      result &&
-      numElem !== '' && !isNaN(Number(numElem)) && Number(numElem) > 0 &&
+      numElem !== '' && !isNaN(Number(numElem)) && Number(numElem) > 0 && Number(numElem) <= 2000 &&
       elementSpacing !== '' && !isNaN(Number(elementSpacing)) && Number(elementSpacing) > 0 &&
       scanAngle !== '' && !isNaN(Number(scanAngle))
     ) {
@@ -334,6 +334,19 @@ function App() {
     }
     // Optionally, you could clear the result or show a message if invalid
   }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern]);
+
+  // Add useEffect to auto-analyze when element gain changes for linear array
+  useEffect(() => {
+    if (
+      activeTab === 'linear' &&
+      numElem !== '' && !isNaN(Number(numElem)) && Number(numElem) > 0 &&
+      elementSpacing !== '' && !isNaN(Number(elementSpacing)) && Number(elementSpacing) > 0 &&
+      scanAngle !== '' && !isNaN(Number(scanAngle)) &&
+      elementGain !== '' && !isNaN(Number(elementGain))
+    ) {
+      analyzeLinearArray();
+    }
+  }, [elementGain]);
 
   // Auto-analyze planar array when relevant fields change (interactive update)
   useEffect(() => {
@@ -548,15 +561,44 @@ function App() {
     <form onSubmit={handleSubmit} style={{ background: '#f9f9f9', padding: 20, borderRadius: 8, position: 'sticky', top: 20 }}>
       <div style={{ marginBottom: 16 }}>
         <label>Number of Elements:&nbsp;
-          <input type="number" min="1" value={numElem} onChange={e => setNumElem(e.target.value)} required style={{ width: 80 }} />
+          <input
+            type="number"
+            min="1"
+            max="2000"
+            value={numElem}
+            onChange={e => {
+              const val = e.target.value;
+              if (val === '') {
+                setNumElem('');
+                setNumElemError('Number of elements is required.');
+                return;
+              }
+              const num = Number(val);
+              if (isNaN(num) || num < 1) {
+                setNumElem(val);
+                setNumElemError('Enter a positive integer.');
+                return;
+              }
+              if (num > 2000) {
+                setNumElem(2000);
+                setNumElemError('Maximum allowed is 2000 elements.');
+              } else {
+                setNumElem(num);
+                setNumElemError('');
+              }
+            }}
+            required
+            style={{ width: 80 }}
+          />
         </label>
+        {numElemError && <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>{numElemError}</div>}
       </div>
       <div style={{ marginBottom: 16 }}>
         <label>Element Spacing (λ):&nbsp;
           <input
             type="number"
             step="0.1"
-            min="0"
+            min="0.1"
             value={elementSpacing}
             onChange={e => setElementSpacing(e.target.value)}
             required
@@ -565,12 +607,19 @@ function App() {
         </label>
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label>Scan Angle (degrees):&nbsp;
+        <label>Scan Angle (degs.):&nbsp;
           <input
             type="number"
             step="any"
+            min="-90"
+            max="90"
             value={scanAngle}
-            onChange={e => setScanAngle(e.target.value)}
+            onChange={e => {
+              let val = Number(e.target.value);
+              if (val > 90) val = 90;
+              if (val < -90) val = -90;
+              setScanAngle(val);
+            }}
             required
             style={{ width: 80 }}
           />
@@ -587,7 +636,7 @@ function App() {
               checked={windowType === 'window'} 
               onChange={e => setWindowType(e.target.value)} 
             />
-            &nbsp;Window Function
+            &nbsp;Pre-defined Window 
           </label>
           <label style={{ display: 'block', marginBottom: 4 }}>
             <input 
@@ -597,7 +646,7 @@ function App() {
               checked={windowType === 'SLL'} 
               onChange={e => setWindowType(e.target.value)} 
             />
-            &nbsp;Direct SLL Control
+            &nbsp;Set SLL
           </label>
         </div>
       </div>
@@ -618,8 +667,8 @@ function App() {
           <label>SLL (dB):&nbsp;
             <input 
               type="number" 
-              min="10" 
-              max="60" 
+              min="13" 
+              max="80" 
               value={SLL} 
               onChange={e => setSLL(e.target.value)} 
               style={{ width: 80 }} 
@@ -630,7 +679,7 @@ function App() {
       <div style={{ marginBottom: 16 }}>
         <label>
           <input type="checkbox" checked={elementPattern} onChange={e => setElementPattern(e.target.checked)} />
-          &nbsp;Apply Element Pattern
+          &nbsp;Element Pattern (cosine)
         </label>
         <div style={{ marginTop: 6, marginLeft: 24 }}>
           <label>
@@ -846,14 +895,14 @@ function App() {
               checked={planarWindowType === 'SLL'} 
               onChange={e => setPlanarWindowType(e.target.value)} 
             />
-            &nbsp;Direct SLL Control
+            &nbsp;Set SLL
           </label>
         </div>
       </div>
       
       {planarWindowType === 'window' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>Window Function:&nbsp;
+          <label>Pre-defined Window :&nbsp;
             <select value={planarWindow} onChange={e => setPlanarWindow(e.target.value)} style={{ width: 150 }}>
               <option value="">No Window</option>
               {windowOptions.map(option => (
@@ -869,8 +918,8 @@ function App() {
           <label>SLL (dB):&nbsp;
             <input 
               type="number" 
-              min="10" 
-              max="60" 
+              min="13" 
+              max="80" 
               value={planarSLL} 
               onChange={e => setPlanarSLL(e.target.value)} 
               style={{ width: 80 }} 
@@ -882,7 +931,7 @@ function App() {
       <div style={{ marginBottom: 16 }}>
         <label>
           <input type="checkbox" checked={planarElementPattern} onChange={e => setPlanarElementPattern(e.target.checked)} />
-          &nbsp;Apply Element Pattern
+          &nbsp;Element Pattern (cosine)
         </label>
       </div>
       
@@ -992,7 +1041,7 @@ function App() {
     };
 
     return (
-      <div>
+    <div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1, background: '#fff', marginBottom: 24 }}>
            <h2>Linear Array Analysis</h2>
            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1010,63 +1059,63 @@ function App() {
              >
                {annotate ? 'Hide Annotations' : 'Show Annotations'}
              </button>
-             <button
-               onClick={togglePlotType}
-               style={{
+          <button 
+            onClick={togglePlotType} 
+            style={{ 
                  padding: '8px 16px',
-                 fontSize: 14,
+              fontSize: 14, 
                  background: plotType === 'cartesian' ? '#0074D9' : '#f5f5f5',
                  color: plotType === 'cartesian' ? 'white' : 'black',
                  border: '1px solid #ddd',
-                 borderRadius: 4,
+              borderRadius: 4,
                  cursor: 'pointer'
-               }}
-             >
+            }}
+          >
                {plotType === 'cartesian' ? 'Switch to Polar' : 'Switch to Cartesian'}
-             </button>
+          </button>
              {/* Keep/Clear trace buttons */}
-             <button 
+              <button 
                onClick={handleKeepTrace}
                disabled={loading || !result || !result.theta || !result.pattern}
-               style={{
+                style={{ 
                  padding: '8px 16px',
-                 fontSize: 14,
+                  fontSize: 14, 
                  background: '#e0e0e0',
                  color: 'black',
                  border: '1px solid #ddd',
-                 borderRadius: 4,
-                 cursor: loading ? 'not-allowed' : 'pointer'
-               }}
-             >
+                  borderRadius: 4,
+                  cursor: loading ? 'not-allowed' : 'pointer'
+                }}
+              >
                Keep trace
-             </button>
-             <button
+              </button>
+              <button 
                onClick={handleClearTraces}
                disabled={loading || traces.length === 0}
-               style={{ 
+                style={{ 
                  padding: '8px 16px', 
-                 fontSize: 14, 
+                  fontSize: 14, 
                  background: '#fff',
                  color: 'black',
                  border: '1px solid #ddd',
-                 borderRadius: 4,
-                 cursor: loading ? 'not-allowed' : 'pointer'
-               }}
-             >
+                  borderRadius: 4,
+                  cursor: loading ? 'not-allowed' : 'pointer'
+                }}
+              >
                Clear all traces
-             </button>
-           </div>
-         </div>
-
+              </button>
+        </div>
+      </div>
+      
         {/* Main results area */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
           {/* Plot area */}
           <div style={{ flex: '0 0 528px', width: 528, minWidth: 528, maxWidth: 528, height: 374, minHeight: 374, maxHeight: 374, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
-            <Plot
+          <Plot
               data={getPlotData()}
               layout={getPlotLayout()}
-              config={{ responsive: true, displayModeBar: true }}
-            />
+            config={{ responsive: true, displayModeBar: true }}
+          />
             <div style={{ display: 'flex', gap: 4, marginTop: 16, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap', fontSize: 11 }}>
               {plotType === 'cartesian' && (
                 <>
@@ -1187,25 +1236,26 @@ function App() {
         </div>
 
                  {/* Manifold plot */}
-         {result && result.manifold && (() => {
-           const x = Array.isArray(result.manifold[0]) ? result.manifold[0] : result.manifold;
-           const y = Array(x.length).fill(0);
-           return (
+         {result && result.manifold && numElem <= 60 && (() => {
+            const x = Array.isArray(result.manifold[0]) ? result.manifold[0] : result.manifold;
+            const y = Array(x.length).fill(0);
+           const markerSize = numElem > 30 ? 4 : 10;
+            return (
              <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
               <Plot
                 data={[{
-                  x,
-                  y,
-                  type: 'scatter',
-                  mode: 'markers',
-                  name: 'Array Elements',
-                  marker: { color: 'red', symbol: 'x', size: 10, line: { width: 2 } },
-                  showlegend: false,
+                    x,
+                    y,
+                    type: 'scatter',
+                    mode: 'markers',
+                    name: 'Array Elements',
+                  marker: { color: 'red', symbol: 'x', size: markerSize, line: { width: 2 } },
+                    showlegend: false,
                 }]}
-                                 layout={{
-                   width: 528,
-                   height: 90,
-                   margin: { l: 50, r: 20, t: 30, b: 40 },
+                layout={{
+                  width: 528,
+                  height: 90,
+                  margin: { l: 50, r: 20, t: 30, b: 40 },
                   xaxis: {
                     title: { text: 'Element Position (λ)', font: { size: 12 } },
                     showgrid: true,
@@ -1225,13 +1275,13 @@ function App() {
                 config={{ responsive: true, displayModeBar: false }}
               />
             </div>
-          );
-        })()}
-
+            );
+          })()}
+          
                  {/* Pattern parameters table */}
          <div style={{ marginTop: 24 }}>
            <h2>Pattern Parameters</h2>
-          <table style={{ borderCollapse: 'collapse', width: '80%', background: '#fff' }}>
+      <table style={{ borderCollapse: 'collapse', width: '80%', background: '#fff' }}>
             <thead>
               <tr>
                 <th style={{ padding: 6, border: '1px solid #eee' }}>Color</th>
@@ -1242,7 +1292,7 @@ function App() {
                 <th style={{ padding: 6, border: '1px solid #eee' }}>HPBW (deg)</th>
               </tr>
             </thead>
-            <tbody>
+        <tbody>
               {/* Kept traces */}
               {traces.map((trace, idx) => (
                 trace.visible && trace.patternParams ? (
@@ -1271,11 +1321,11 @@ function App() {
                   <td style={{ padding: 6, border: '1px solid #eee' }}>{result.hpbw.toFixed(2)}</td>
                 </tr>
               )}
-            </tbody>
-          </table>
+        </tbody>
+      </table>
         </div>
-      </div>
-    );
+    </div>
+  );
   };
 
   /**
@@ -1308,10 +1358,10 @@ function App() {
 
       const currentTrace = planarShowCurrent && result && result.theta && result.pattern && result.theta.length > 0 && result.pattern.length > 0
         ? [{
-            x: result.theta,
-            y: result.pattern,
-            type: 'scatter',
-            mode: 'lines',
+                x: result.theta,
+                y: result.pattern,
+                type: 'scatter',
+                mode: 'lines',
             name: 'Current',
             line: { color: '#0074D9', width: 3 },
             opacity: 1,
@@ -1325,24 +1375,24 @@ function App() {
      * Generates plot layout for planar array pattern cuts
      */
     const getPlanarPlotLayout = () => ({
-      width: 528,
+              width: 528,
       height: 300,
-      margin: { l: 50, r: 20, t: 30, b: 50 },
-      xaxis: {
-        title: 'Angle (deg)',
-        showgrid: true,
+              margin: { l: 50, r: 20, t: 30, b: 50 },
+              xaxis: {
+                title: 'Angle (deg)',
+                showgrid: true,
         range: xMin !== '' && xMax !== '' ? [Number(xMin), Number(xMax)] : undefined,
         dtick: xStep !== '' ? Number(xStep) : undefined,
-      },
-      yaxis: {
-        title: 'Array Factor (dB)',
-        showgrid: true,
+              },
+              yaxis: {
+                title: 'Array Factor (dB)',
+                showgrid: true,
         range: yMin !== '' && yMax !== '' ? [Number(yMin), Number(yMax)] : undefined,
         dtick: yStep !== '' ? Number(yStep) : undefined,
-      },
+              },
       showlegend: false,
-      plot_bgcolor: '#fff',
-      paper_bgcolor: '#fff',
+              plot_bgcolor: '#fff',
+              paper_bgcolor: '#fff',
     });
 
     return (
@@ -1397,8 +1447,8 @@ function App() {
                 <Plot
                   data={getPlanarPlotData()}
                   layout={getPlanarPlotLayout()}
-                  config={{ responsive: true, displayModeBar: true }}
-                />
+            config={{ responsive: true, displayModeBar: true }}
+          />
                 <div style={{ display: 'flex', gap: 4, marginTop: 16, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap', fontSize: 11 }}>
                   <label style={{ margin: 0 }}>
                     X min:&nbsp;
@@ -1507,42 +1557,42 @@ function App() {
             </div>
 
             {/* Manifold plot */}
-            {result.manifold_x && result.manifold_y && (
+          {result.manifold_x && result.manifold_y && (
               <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
-                <Plot
+            <Plot
                   data={[{
-                    x: result.manifold_x,
-                    y: result.manifold_y,
-                    type: 'scatter',
-                    mode: 'markers',
-                    name: 'Array Elements',
-                    marker: { color: 'red', symbol: 'x', size: 8 },
-                    showlegend: false,
+                  x: result.manifold_x,
+                  y: result.manifold_y,
+                  type: 'scatter',
+                  mode: 'markers',
+                  name: 'Array Elements',
+                  marker: { color: 'red', symbol: 'x', size: 8 },
+                  showlegend: false,
                   }]}
-                  layout={{
-                    width: 528,
-                    height: 200,
-                    margin: { l: 50, r: 20, t: 30, b: 50 },
-                    xaxis: {
-                      title: { text: 'X Position (λ)', font: { size: 12 } },
-                      showgrid: true,
-                      zeroline: true,
-                      scaleanchor: 'y',
-                      scaleratio: 1,
-                    },
-                    yaxis: {
-                      title: { text: 'Y Position (λ)', font: { size: 12 } },
-                      showgrid: true,
-                      zeroline: true,
-                      scaleratio: 1,
-                    },
-                    plot_bgcolor: '#fff',
-                    paper_bgcolor: '#fff',
-                  }}
-                  config={{ responsive: true, displayModeBar: false }}
-                />
+              layout={{
+                width: 528,
+                height: 200,
+                margin: { l: 50, r: 20, t: 30, b: 50 },
+                xaxis: {
+                  title: { text: 'X Position (λ)', font: { size: 12 } },
+                  showgrid: true,
+                  zeroline: true,
+                  scaleanchor: 'y',
+                  scaleratio: 1,
+                },
+                yaxis: {
+                  title: { text: 'Y Position (λ)', font: { size: 12 } },
+                  showgrid: true,
+                  zeroline: true,
+                  scaleratio: 1,
+                },
+                plot_bgcolor: '#fff',
+                paper_bgcolor: '#fff',
+              }}
+              config={{ responsive: true, displayModeBar: false }}
+            />
               </div>
-            )}
+          )}
 
             {/* Pattern parameters table */}
             <div style={{ marginTop: 24 }}>
@@ -1590,9 +1640,9 @@ function App() {
                 </tbody>
               </table>
             </div>
-          </>
-        ) : planarPlotType === 'manifold' && result.manifold_x && result.manifold_y ? (
-          <Plot
+        </>
+      ) : planarPlotType === 'manifold' && result.manifold_x && result.manifold_y ? (
+        <Plot
             data={[{
               x: result.manifold_x,
               y: result.manifold_y,
@@ -1601,29 +1651,29 @@ function App() {
               name: 'Array Elements',
               marker: { color: 'red', symbol: 'x', size: 10 },
             }]}
-            layout={{
-              width: 528,
-              height: 400,
-              margin: { l: 50, r: 20, t: 30, b: 50 },
-              title: { text: 'Array Manifold', font: { size: 16 } },
-              xaxis: {
-                title: { text: 'X Position (λ)', font: { size: 14 } },
-                showgrid: true,
-                zeroline: true,
-                scaleanchor: 'y',
-                scaleratio: 1,
-              },
-              yaxis: {
-                title: { text: 'Y Position (λ)', font: { size: 14 } },
-                showgrid: true,
-                zeroline: true,
-                scaleratio: 1,
-              },
-              plot_bgcolor: '#fff',
-              paper_bgcolor: '#fff',
-            }}
-            config={{ responsive: true, displayModeBar: true }}
-          />
+          layout={{
+            width: 528,
+            height: 400,
+            margin: { l: 50, r: 20, t: 30, b: 50 },
+            title: { text: 'Array Manifold', font: { size: 16 } },
+            xaxis: {
+              title: { text: 'X Position (λ)', font: { size: 14 } },
+              showgrid: true,
+              zeroline: true,
+              scaleanchor: 'y',
+              scaleratio: 1,
+            },
+            yaxis: {
+              title: { text: 'Y Position (λ)', font: { size: 14 } },
+              showgrid: true,
+              zeroline: true,
+              scaleratio: 1,
+            },
+            plot_bgcolor: '#fff',
+            paper_bgcolor: '#fff',
+          }}
+          config={{ responsive: true, displayModeBar: true }}
+        />
         ) : result.plot_type === '3d_polar' && result.data ? (
           // Render native Plotly 3D polar plot
           <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
@@ -1667,37 +1717,37 @@ function App() {
               config={{ responsive: true, displayModeBar: true }}
             />
           </div>
-        ) : result.plot ? (
-          <img
-            src={`data:image/png;base64,${result.plot}`}
-            alt="Planar Array Plot"
-            style={{ maxWidth: '80%', border: '1px solid #ccc', borderRadius: 8 }}
-          />
-        ) : null}
-        
+      ) : result.plot ? (
+        <img
+          src={`data:image/png;base64,${result.plot}`}
+          alt="Planar Array Plot"
+          style={{ maxWidth: '80%', border: '1px solid #ccc', borderRadius: 8 }}
+        />
+      ) : null}
+      
         {/* Simple parameter display for non-pattern-cut plots */}
         {result && (result.gain !== undefined || result.manifold_x) && planarPlotType !== 'pattern_cut' && (
-          <>
-            <h2 style={{ marginTop: 16 }}>Pattern Parameters</h2>
-            <table style={{ borderCollapse: 'collapse', width: '80%', background: '#fff' }}>
-              <tbody>
+        <>
+          <h2 style={{ marginTop: 16 }}>Pattern Parameters</h2>
+          <table style={{ borderCollapse: 'collapse', width: '80%', background: '#fff' }}>
+            <tbody>
                 {result.gain !== undefined && <tr><td style={{ padding: 6, border: '1px solid #eee' }}>Gain (dB)</td><td style={{ padding: 6, border: '1px solid #eee' }}>{result.gain.toFixed(2)}</td></tr>}
                 {result.peak_angle !== undefined && <tr><td style={{ padding: 6, border: '1px solid #eee' }}>Peak Angle (deg)</td><td style={{ padding: 6, border: '1px solid #eee' }}>{result.peak_angle.toFixed(2)}</td></tr>}
                 {result.sll !== undefined && <tr><td style={{ padding: 6, border: '1px solid #eee' }}>SLL (dB)</td><td style={{ padding: 6, border: '1px solid #eee' }}>{result.sll.toFixed(2)}</td></tr>}
                 {result.hpbw !== undefined && <tr><td style={{ padding: 6, border: '1px solid #eee' }}>HPBW (deg)</td><td style={{ padding: 6, border: '1px solid #eee' }}>{result.hpbw.toFixed(2)}</td></tr>}
                 {result.cut_angle !== undefined && <tr><td style={{ padding: 6, border: '1px solid #eee' }}>Cut Angle (deg)</td><td style={{ padding: 6, border: '1px solid #eee' }}>{result.cut_angle.toFixed(2)}</td></tr>}
-              </tbody>
-            </table>
-          </>
-        )}
-      </div>
-    );
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
+  );
   };
 
   // ============================================================================
   // MAIN RENDER
   // ============================================================================
-  
+
   return (
     <div style={{ maxWidth: 1200, margin: '40px auto', fontFamily: 'sans-serif', padding: 24 }}>
       <h1>Antenna Array Analysis Tool</h1>
