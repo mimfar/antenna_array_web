@@ -86,10 +86,8 @@ function App() {
   
   /**
    * Analyzes linear array parameters and returns pattern data
-   * @param {boolean} annotateParam - Whether to include pattern annotations
-   * @param {string} plotTypeParam - Plot type ('cartesian' or 'polar')
    */
-  const analyzeLinearArray = async (annotateParam = annotate, plotTypeParam = plotType) => {
+  const analyzeLinearArray = async () => {
     setLoading(true);
     setError('');
     setResult(null);
@@ -120,8 +118,8 @@ function App() {
           scan_angle: validatedScanAngle,
           element_pattern: Boolean(elementPattern),
           element_gain: Number(elementGain),
-          annotate: Boolean(annotateParam),
-          plot_type: plotTypeParam,
+          annotate: Boolean(annotate), // Keep for backward compatibility, but backend ignores this now
+          plot_type: plotType,
           window: windowType === 'window' ? (window || null) : null,
           SLL: windowType === 'SLL' ? Number(SLL) : null,
           show_manifold: true // Always request manifold data
@@ -264,21 +262,22 @@ function App() {
 
   /**
    * Toggles pattern annotations (peak, SLL, HPBW markers)
+   * No longer makes API calls - just toggles the display of existing annotation data
    */
-  const toggleAnnotate = async () => {
+  const toggleAnnotate = () => {
     if (result && activeTab === 'linear') {
-      await analyzeLinearArray(!annotate);
+      setAnnotate(!annotate);
     }
   };
 
   /**
    * Toggles between cartesian and polar plot types
+   * No longer makes API calls - just changes the plot display type
    */
-  const togglePlotType = async () => {
+  const togglePlotType = () => {
     if (result && activeTab === 'linear') {
       const newPlotType = plotType === 'cartesian' ? 'polar' : 'cartesian';
       setPlotType(newPlotType);
-      await analyzeLinearArray(annotate, newPlotType);
     }
   };
 
@@ -981,13 +980,136 @@ function App() {
           }]
         : [];
 
-      return [...baseTraces, ...currentTrace];
+      // Add annotation lines when annotations are enabled
+      const annotationTraces = [];
+      if (annotate && result && result.peak_angle !== undefined && result.sll !== undefined && result.hpbw !== undefined) {
+        const peakAngle = result.peak_angle;
+        const peakValue = result.gain;
+        const sllValue = peakValue - result.sll;
+        const hpbwLeft = peakAngle - result.hpbw / 2;
+        const hpbwRight = peakAngle + result.hpbw / 2;
+
+        // HPBW line (horizontal line at -3dB from peak)
+        if (plotType === 'cartesian') {
+          annotationTraces.push({
+            x: [hpbwLeft, hpbwRight],
+            y: [peakValue - 3, peakValue - 3],
+            type: 'scatter',
+            mode: 'lines',
+            name: 'HPBW',
+            line: { color: 'black', width: 2, dash: 'dot' },
+            opacity: 0.5,
+            showlegend: false,
+          });
+        } else {
+          // For polar plots, create HPBW arc
+          const hpbwTheta = [];
+          const hpbwR = [];
+          for (let angle = hpbwLeft; angle <= hpbwRight; angle += hpbwRight/5) {
+            hpbwTheta.push(angle);
+            hpbwR.push(peakValue - 3);
+          }
+          annotationTraces.push({
+            r: hpbwR,
+            theta: hpbwTheta,
+            type: 'scatterpolar',
+            mode: 'lines',
+            name: 'HPBW',
+            line: { color: 'black', width: 2, dash: 'dot' },
+            opacity: 0.5,
+            showlegend: false,
+          });
+        }
+
+        // SLL line (horizontal line at SLL level)
+        if (plotType === 'cartesian') {
+          annotationTraces.push({
+            x: [result.theta[0], result.theta[result.theta.length - 1]],
+            y: [sllValue, sllValue],
+            type: 'scatter',
+            mode: 'lines',
+            name: 'SLL',
+            line: { color: 'red', width: 2, dash: 'dot' },
+            opacity: 0.5,
+            showlegend: false,
+          });
+        } else {
+          // For polar plots, create SLL circle
+          const sllTheta = [];
+          const sllR = [];
+          for (let angle = 0; angle <= 360; angle += 1) {
+            sllTheta.push(angle);
+            sllR.push(sllValue);
+          }
+          annotationTraces.push({
+            r: sllR,
+            theta: sllTheta,
+            type: 'scatterpolar',
+            mode: 'lines',
+            name: 'SLL',
+            line: { color: 'red', width: 2, dash: 'dot' },
+            opacity: 0.5,
+            showlegend: false,
+          })
+  
+
+        }
+      }
+
+      // Add polar annotation as a text trace
+      const polarAnnotations = [];
+      if (
+        plotType === 'polar' &&
+        annotate &&
+        result &&
+        result.peak_angle !== undefined &&
+        result.gain !== undefined
+      ) {
+        polarAnnotations.push({
+          type: 'scatterpolar',
+          mode: 'text',
+          r: [result.gain+1],
+          theta: [result.peak_angle],
+          text: [`Peak: ${result.gain.toFixed(1)} dB @ ${result.peak_angle.toFixed(1)}°`],
+          textfont: { color: 'green', size: 12 },
+          showlegend: false,
+          hoverinfo: 'skip'
+        });
+        polarAnnotations.push({
+          type: 'scatterpolar',
+          mode: 'text',
+          r: [result.gain - 5],
+          theta: [result.peak_angle],
+          text: [`HPBW: ${result.hpbw.toFixed(1)}°`],
+          textfont: { color: 'black', size: 12 },
+          showlegend: false,
+          hoverinfo: 'skip'
+        });
+        polarAnnotations.push({
+          type: 'scatterpolar',
+          mode: 'text',
+          r: [result.gain - result.sll],
+          theta: [result.peak_angle],
+          text: [`SLL: ${result.sll.toFixed(1)}dB`],
+          textfont: { color: 'black', size: 12 },
+          showlegend: false,
+          hoverinfo: 'skip'
+        });
+      }
+
+      return [
+        ...baseTraces,
+        ...currentTrace,
+        ...annotationTraces,
+        ...polarAnnotations // <-- Add this at the end
+      ];
     };
 
     /**
      * Generates plot layout configuration for both cartesian and polar plots
      * Sets appropriate axis configurations and styling based on plot type
      */
+    
     const getPlotLayout = () => {
       const baseLayout = {
         width: 528,
@@ -1007,13 +1129,38 @@ function App() {
             range: xMin !== '' && xMax !== '' ? [Number(xMin), Number(xMax)] : undefined,
             dtick: xStep !== '' ? Number(xStep) : undefined,
           },
-          yaxis: {
-            title: 'Array Factor (dB)',
-            showgrid: true,
-            range: yMin !== '' && yMax !== '' ? [Number(yMin), Number(yMax)] : undefined,
-            dtick: yStep !== '' ? Number(yStep) : undefined,
-          },
-          annotations: result.annotations || [],
+                      yaxis: {
+              title: 'Array Factor (dB)',
+              showgrid: true,
+              range: yMin !== '' && yMax !== '' ? [Number(yMin), Number(yMax)] : undefined,
+              dtick: yStep !== '' ? Number(yStep) : undefined,
+            },
+                          annotations: annotate && result && result.peak_angle !== undefined ? [
+                {
+                  x: result.peak_angle + 0.5 * result.hpbw,
+                  y: result.gain,
+                  text: `Peak: ${result.gain.toFixed(1)} dB @ ${result.peak_angle.toFixed(1)}°`,
+                  showarrow: false,
+                  font: { color: 'green' },
+                  xanchor: 'left'
+                },
+                {
+                  x: result.peak_angle + 1 * result.hpbw,
+                  y: result.gain - 3,
+                  text: `HPBW: ${result.hpbw.toFixed(1)}°`,
+                  showarrow: false,
+                  font: { color: 'black' },
+                  xanchor: 'left'
+                },
+                {
+                  x: result.peak_angle + 2 * result.hpbw,
+                  y: result.gain - result.sll + 1,
+                  text: `SLL: ${result.sll.toFixed(1)} dB`,
+                  showarrow: false,
+                  font: { color: 'red' },
+                  xanchor: 'left'
+                }
+              ] : [],
         };
       } else {
         return {
@@ -1033,9 +1180,37 @@ function App() {
               range: xMin !== '' && xMax !== '' ? [Number(xMin), Number(xMax)] : undefined,
               dtick: xStep !== '' ? Number(xStep) : undefined,
               direction: 'clockwise',
-              rotation: 90
+              rotation: 90,
+              tickmode: 'array',
+              tickvals: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330],
+              ticktext: ['0°', '30°', '60°', '90°', '120°', '150°', '180°', '-150°','-120','-90','-60','-30'],
             }
           },
+          // annotations: annotate && result && result.peak_angle !== undefined ? [
+          //   {
+          //     x: result.gain * Math.cos(result.peak_angle * Math.PI/180),
+          //     y: result.gain * Math.sin(result.peak_angle * Math.PI/180),
+          //     text: `Peak: ${result.gain.toFixed(1)} dB @ ${result.peak_angle.toFixed(1)}°`,
+          //     font: { color: 'green' },
+          //     xanchor: 'left'
+          //   },
+          //   {
+          //     r: result.gain - 3,
+          //     theta: result.peak_angle,
+          //     text: `HPBW: ${result.hpbw.toFixed(1)}°`,
+          //     showarrow: false,
+          //     font: { color: 'black' },
+          //     xanchor: 'left'
+          //   },
+          //   {
+          //     r: result.gain - result.sll + 1,
+          //     theta: result.peak_angle + 2 * result.hpbw,
+          //     text: `SLL: ${result.sll.toFixed(1)} dB`,
+          //     showarrow: false,
+          //     font: { color: 'red' },
+          //     xanchor: 'left'
+            // }
+          // ] : [],
         };
       }
     };
@@ -1708,9 +1883,9 @@ function App() {
                   camera: {
                     eye: { x: 1.5, y: 1.5, z: 1.5 }
                   },
-                  xaxis: { title: 'X' },
-                  yaxis: { title: 'Y' },
-                  zaxis: { title: 'Z' }
+                  xaxis: { title: {text:''}, showgrid: false, zeroline: false ,showticklabels: false},
+                  yaxis: { title: {text:''}, showgrid: false, zeroline: false ,showticklabels: false},
+                  zaxis: { title: {text:''}, showgrid: false, showline: false ,showticklabels: false}
                 },
                 margin: { l: 0, r: 0, t: 50, b: 0 }
               }}

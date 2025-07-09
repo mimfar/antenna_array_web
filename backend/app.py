@@ -29,6 +29,7 @@ def analyze_linear_array():
     element_gain = data.get('element_gain', 0)
     # Create LinearArray instance
     arr = LinearArray(
+        
         num_elem=num_elem,
         element_spacing=element_spacing,
         scan_angle=scan_angle,
@@ -40,95 +41,31 @@ def analyze_linear_array():
     AF = arr.calc_AF
     pattern_params = arr.calc_peak_sll_hpbw()
 
+    # Calculate pattern data (same for both cartesian and polar plots)
+    theta = arr.theta.tolist()
+    pattern = db20(arr.AF)
+    pattern[pattern<-100] = -100    
+    pattern = pattern.tolist()
+    manifold = arr.X.tolist() if show_manifold else None
     
 
-    if plot_type == 'cartesian':
-        theta = arr.theta.tolist()
-        pattern = db20(arr.AF)
-        pattern[pattern<-100] = -100    
-        pattern = pattern.tolist()
-        manifold = arr.X.tolist() if show_manifold else None
-        annotations = []
-        if annotate:
-            # Add annotation info for peak, HPBW, SLL
-            peak, t_peak, sll, hpbw = pattern_params
-            annotations.append({
-                'x': t_peak,
-                'y': peak,
-                'text': f'Peak: {peak:.1f} dB @ {t_peak:.1f}°',
-                'showarrow': True,
-                'arrowhead': 2,
-                'ax': 0,
-                'ay': -40,
-                'font': {'color': 'green'}
-            })
-            # HPBW annotation (draw a line)
-            hpbw_left = t_peak - hpbw/2
-            hpbw_right = t_peak + hpbw/2
-            annotations.append({
-                'x': (hpbw_left + hpbw_right)/2,
-                'y': peak-3,
-                'text': f'HPBW: {hpbw:.1f}°',
-                'showarrow': False,
-                'font': {'color': 'black'}
-            })
-            # SLL annotation (draw a line at SLL level)
-            annotations.append({
-                'x': t_peak-2*hpbw,
-                'y': peak-sll/2,
-                'text': f'SLL: {sll:.1f} dB',
-                'showarrow': False,
-                'font': {'color': 'red'}
-            })
-        ymax = 5 * (int(max(pattern) / 5) + 1)
-        ymin = ymax - 40
+    
+    # Calculate y-axis limits
+    ymax = 5 * (int(max(pattern) / 5) + 1)
+    ymin = ymax - 40
 
-        response = {
-            'theta': theta,
-            'pattern': pattern,
-            'manifold': manifold,
-            'gain': pattern_params.Gain,
-            'peak_angle': pattern_params.Peak_Angle,
-            'sll': pattern_params.SLL,
-            'hpbw': pattern_params.HPBW,
-            'annotations': annotations,
-            'ymin': ymin,
-            'ymax': ymax
-        }
-        return jsonify(response)
-    else:
-        # Polar plot: return both image and data for native Plotly support
-        fig, ax = arr.polar_pattern()
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-        buf.seek(0)
-        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-        plt.close(fig)
-        
-        # Also return the data for native Plotly polar plots
-        theta = arr.theta.tolist()
-        pattern = db20(arr.AF)
-        pattern[pattern<-100] = -100    
-        pattern = pattern.tolist()
-        manifold = arr.X.tolist() if show_manifold else None
-        
-        # Calculate y-axis limits
-        ymax = 5 * (int(max(pattern) / 5) + 1)
-        ymin = ymax - 40
-        
-        response = {
-            'plot': img_base64,  # Keep for backward compatibility
-            'theta': theta,      # Add for native Plotly polar plots
-            'pattern': pattern,  # Add for native Plotly polar plots
-            'manifold': manifold, # Add for native Plotly polar plots
-            'gain': pattern_params.Gain,
-            'peak_angle': pattern_params.Peak_Angle,
-            'sll': pattern_params.SLL,
-            'hpbw': pattern_params.HPBW,
-            'ymin': ymin,
-            'ymax': ymax
-        }
-        return jsonify(response)
+    response = {
+        'theta': theta,
+        'pattern': pattern,
+        'manifold': manifold,
+        'gain': pattern_params.Gain,
+        'peak_angle': pattern_params.Peak_Angle,
+        'sll': pattern_params.SLL,
+        'hpbw': pattern_params.HPBW,
+        'ymin': ymin,
+        'ymax': ymax
+    }
+    return jsonify(response)
 
 @app.route('/api/planar-array/analyze', methods=['POST'])
 def analyze_planar_array():
