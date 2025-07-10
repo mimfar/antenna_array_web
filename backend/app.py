@@ -7,12 +7,22 @@ import matplotlib.pyplot as plt
 from linear_array import LinearArray, db20
 from planar_array import PlanarArray
 import numpy as np
-
-
-
+import hashlib
+import json
 
 app = Flask(__name__)
 CORS(app)  # or simply CORS(app)
+
+# Global storage for array instances to avoid recalculation
+array_cache = {}
+
+def get_array_key(array_type, array_params):
+    """Generate a unique key for array caching"""
+    # Create a hash of the array parameters
+    param_str = json.dumps(array_params, sort_keys=True)
+    return f"{array_type}_{hashlib.md5(param_str.encode()).hexdigest()}"
+
+
 
 @app.route('/api/linear-array/analyze', methods=['POST'])
 def analyze_linear_array():
@@ -100,20 +110,48 @@ def analyze_planar_array():
     else:
         raise ValueError(f"Invalid array type: {array_type}")
     
-    # Create PlanarArray instance
-    arr = PlanarArray(
-        array_shape=array_shape,
-        scan_angle=scan_angle,
-        element_pattern=element_pattern,
-        window=window,
-        SLL=SLL
-    )
+    # Create array parameters for caching
+    array_params = {
+        'array_shape': array_shape,
+        'scan_angle': scan_angle,
+        'element_pattern': element_pattern,
+        'window': window,
+        'SLL': SLL
+    }
     
-    # Calculate array factor
-    AF = arr.calc_AF
+    # Generate cache key
+    array_key = get_array_key(array_type, array_params)
     
-    # Calculate pattern parameters
+    # Check if array already exists in cache
+    if array_key in array_cache:
+        # Use cached array
+        arr = array_cache[array_key]
+        print(f"Using cached array for key: {array_key}")
+    else:
+        # Create new PlanarArray instance
+        arr = PlanarArray(
+            array_shape=array_shape,
+            scan_angle=scan_angle,
+            element_pattern=element_pattern,
+            window=window,
+            SLL=SLL
+        )
+        # Calculate array factor (expensive computation)
+        AF = arr.calc_AF
+          # Calculate pattern parameters
+        pattern_params = arr.calc_peak_sll_hpbw()
+        # Cache the array instance for future use
+        array_cache[array_key] = arr
+        print(f"Created and cached new array for key: {array_key}")
+    
+    # Get manifold data
+    manifold_x = (arr.X - np.mean(arr.X)).tolist()
+    manifold_y = (arr.Y - np.mean(arr.Y)).tolist()
+    
     pattern_params = arr.calc_peak_sll_hpbw()
+
+    
+   
     
     # Generate response based on plot type
     if plot_type == 'pattern_cut':
@@ -122,14 +160,10 @@ def analyze_planar_array():
         G[G<-100] = -100
         theta = theta_deg.tolist()
         pattern = G.tolist()
-        
-        # Get manifold data
-        manifold_x = (arr.X - np.mean(arr.X)).tolist()
-        manifold_y = (arr.Y - np.mean(arr.Y)).tolist()
-        
-        # Add y-axis limits
+           # Add y-axis limits
         ymax = 5 * (int(max(pattern) / 5) + 1)
-        ymin = ymax - 40
+        ymin = ymax - 40 
+    
         
         response = {
             'theta': theta,
@@ -147,9 +181,7 @@ def analyze_planar_array():
         return jsonify(response)
         
     elif plot_type == 'manifold':
-        # Array manifold plot
-        manifold_x = (arr.X - np.mean(arr.X)).tolist()
-        manifold_y = (arr.Y - np.mean(arr.Y)).tolist()
+ 
         
         response = {
             'manifold_x': manifold_x,
@@ -165,6 +197,8 @@ def analyze_planar_array():
             response = {
                 'plot_type': '3d_polar',
                 'data': data,
+                'manifold_x': manifold_x,
+                'manifold_y': manifold_y,
                 'gain': pattern_params.Gain,
                 'peak_angle': pattern_params.Peak_Angle,
                 'sll': pattern_params.SLL,
@@ -179,6 +213,8 @@ def analyze_planar_array():
             plt.close(fig)
             response = {
                 'plot': img_base64,
+                'manifold_x': manifold_x,
+                'manifold_y': manifold_y,
                 'gain': pattern_params.Gain,
                 'peak_angle': pattern_params.Peak_Angle,
                 'sll': pattern_params.SLL,
@@ -193,6 +229,8 @@ def analyze_planar_array():
             plt.close(fig)
             response = {
                 'plot': img_base64,
+                'manifold_x': manifold_x,
+                'manifold_y': manifold_y,
                 'gain': pattern_params.Gain,
                 'peak_angle': pattern_params.Peak_Angle,
                 'sll': pattern_params.SLL,
@@ -208,6 +246,8 @@ def analyze_planar_array():
             plt.close(fig)
             response = {
                 'plot': img_base64,
+                'manifold_x': manifold_x,
+                'manifold_y': manifold_y,
                 'gain': pattern_params.Gain,
                 'peak_angle': pattern_params.Peak_Angle,
                 'sll': pattern_params.SLL,

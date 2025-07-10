@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Plot from 'react-plotly.js';
 
 /**
@@ -72,6 +72,9 @@ function App() {
   const [planarHighlightedTrace, setPlanarHighlightedTrace] = useState(null); // Index of highlighted planar trace on hover
   const [planarShowCurrent, setPlanarShowCurrent] = useState(true);         // Show/hide current planar plot
   const [planarAutoYMax, setPlanarAutoYMax] = useState('');                 // Track auto-set yMax for planar plots
+  
+  // Array caching for optimized pattern cuts
+  const prevCutAngleRef = useRef(null);                                     // Track previous cut angle for optimization
 
   // Constants and configuration
   const windowOptions = ['hamming', 'blackman', 'blackmanharris'];          // Available window functions
@@ -353,6 +356,10 @@ function App() {
     // Trigger for all plot types including 3D plots
     if (!['pattern_cut', 'manifold', 'polar3d', 'contour', 'polarsurf'].includes(planarPlotType)) return;
 
+    // Clear array key when array parameters change (to avoid using stale cached data)
+    // This ensures we do a full analysis when any array parameter changes
+    prevCutAngleRef.current = null;
+
     // Validation for rectangular/triangular arrays
     if (planarArrayType === 'rect' || planarArrayType === 'tri') {
       const numRows = planarNumElem[0], numCols = planarNumElem[1];
@@ -381,7 +388,7 @@ function App() {
       if (planarScanAngle[0] === '' || isNaN(Number(planarScanAngle[0])) || planarScanAngle[1] === '' || isNaN(Number(planarScanAngle[1]))) return;
       analyzePlanarArray();
     }
-  }, [activeTab, planarArrayType, planarNumElem, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarScanAngle, planarElementPattern, planarWindow, planarSLL, planarWindowType, planarPlotType, planarCutAngle]);
+  }, [activeTab, planarArrayType, planarNumElem, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarScanAngle, planarElementPattern, planarWindow, planarSLL, planarWindowType,planarPlotType, planarCutAngle]);
 
   // Track the last auto-set yMax to avoid overriding user changes
   useEffect(() => {
@@ -752,6 +759,20 @@ function App() {
                 />
               </label>
             </div>
+            {/* Warning and error for too many elements */}
+            {(() => {
+              const rows = parseInt(planarNumElem[0]);
+              const cols = parseInt(planarNumElem[1]);
+              if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
+                const total = rows * cols;
+                if (total > 5000) {
+                  return <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>Error: Total elements ({total}) exceeds the hard limit of 5000.</div>;
+                } else if (total > 2000) {
+                  return <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>Warning: Total elements ({total}) exceeds 2000. Computation may be slow.</div>;
+                }
+              }
+              return null;
+            })()}
           </div>
           <div style={{ marginBottom: 16 }}>
             <label>Element Spacing:</label>
@@ -800,6 +821,18 @@ function App() {
               <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
                 Enter comma-separated positive integers (e.g., "8, 16, 24" for 3 rings)
               </div>
+              {/* Warning and error for too many elements in circular array */}
+              {(() => {
+                const parts = planarNumElemRaw.split(',').map(s => s.trim()).filter(s => s !== '');
+                const nums = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n > 0);
+                const total = nums.reduce((a, b) => a + b, 0);
+                if (total > 5000) {
+                  return <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>Error: Total elements ({total}) exceeds the hard limit of 5000.</div>;
+                } else if (total > 2000) {
+                  return <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>Warning: Total elements ({total}) exceeds 2000. Computation may be slow.</div>;
+                }
+                return null;
+              })()}
             </div>
           </div>
           <div style={{ marginBottom: 16 }}>
@@ -934,7 +967,19 @@ function App() {
         </label>
       </div>
       
-      <button type="submit" disabled={loading} style={{ padding: '8px 20px', fontSize: 16, width: '100%' }}>
+      <button type="submit" disabled={loading || (() => {
+        if (planarArrayType === 'rect' || planarArrayType === 'tri') {
+          const rows = parseInt(planarNumElem[0]);
+          const cols = parseInt(planarNumElem[1]);
+          if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0 && rows * cols > 5000) return true;
+        } else if (planarArrayType === 'circ') {
+          const parts = planarNumElemRaw.split(',').map(s => s.trim()).filter(s => s !== '');
+          const nums = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n > 0);
+          const total = nums.reduce((a, b) => a + b, 0);
+          if (total > 5000) return true;
+        }
+        return false;
+      })()} style={{ padding: '8px 20px', fontSize: 16, width: '100%' }}>
         {loading ? 'Analyzing...' : 'Analyze Planar Array'}
       </button>
     </form>

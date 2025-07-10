@@ -232,10 +232,17 @@ class PlanarArray():
         cs_idx = np.asarray(dG_cs == 1).nonzero()[0] # idx of peaks and nulls
         idx_ = np.asarray(cs_idx == idx_peak).nonzero()[0][0]
         idx_null_L, idx_null_R= cs_idx[idx_-1],cs_idx[idx_+1]
-        idx_3dB_R = idx_peak + np.argmin(np.abs(G[idx_peak:idx_null_R] - peak + 3))
-        idx_3dB_L = idx_null_L + np.argmin(np.abs(G[idx_null_L:idx_peak] - peak + 3))
-        HPBW = theta_deg[idx_3dB_R] - theta_deg[idx_3dB_L]    
-        SLL = peak - np.max([np.max(G[0:idx_null_L]),np.max(G[idx_null_R:])])
+        try:
+            idx_3dB_R = idx_peak + np.argmin(np.abs(G[idx_peak:idx_null_R] - peak + 3))
+            idx_3dB_L = idx_null_L + np.argmin(np.abs(G[idx_null_L:idx_peak] - peak + 3))
+            HPBW = theta_deg[idx_3dB_R] - theta_deg[idx_3dB_L]    
+        except:
+            HPBW = -1
+        try:
+            SLL = peak - np.max([np.max(G[0:idx_null_L]),np.max(G[idx_null_R:])])
+        except:
+            SLL = -100
+        
         pattern_params = namedtuple('pattern_params',['Gain','Peak_Angle','SLL','HPBW'])
         self.pattern_params = pattern_params(float(f'{peak:1.1f}'), float(f'{theta_peak:1.1f}'), float(f'{SLL:1.1f}'), float(f'{HPBW:1.1f}'))
         return self.pattern_params
@@ -366,7 +373,7 @@ class PlanarArray():
         Z = G * np.cos(np.radians(T))
         
         # Normalize array element positions
-        max1 = max(np.max(self.X - np.mean(self.X)), np.max(self.Y - np.mean(self.Y)))
+        max1 = max(np.max(self.X - np.mean(self.X)), np.max(self.Y - np.mean(self.Y)),0.1) # 0.1 to avoid divide by zero in case of a 1x1 array
         array_x = (self.X - np.mean(self.X)) / max1 * g_range / 2
         array_y = (self.Y - np.mean(self.Y)) / max1 * g_range / 2
         
