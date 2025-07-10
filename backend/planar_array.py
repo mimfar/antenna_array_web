@@ -220,10 +220,10 @@ class PlanarArray():
         return theta_cut , np.hstack((np.flip(G[idx_phi_cut2,1:]), G[idx_phi_cut1,:]) )
         
     
-    def calc_peak_sll_hpbw(self):
+    def calc_peak_sll_hpbw(self,cut_angle):
         '''Function calculates the Peak value and angle, SLL, and HPBW of G in dB
         assuming a pattern with a single peak (no grating lobes)'''
-        theta_deg,G = self.pattern_cut(self.scan_angle[1])
+        theta_deg,G = self.pattern_cut(cut_angle)
         peak,idx_peak  = np.max(G), np.argmax(G) 
         theta_peak = theta_deg[idx_peak]
         dG = np.sign(np.diff(G))

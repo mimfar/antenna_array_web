@@ -40,8 +40,8 @@ function App() {
   const [planarNumElem, setPlanarNumElem] = useState([8, 8]);               // Number of elements [rows, cols] for rect/tri
   const [planarNumElemRaw, setPlanarNumElemRaw] = useState('8, 8');         // Raw string input for circular arrays
   const [planarElementSpacing, setPlanarElementSpacing] = useState(["0.5", "0.5"]); // Element spacing [x, y] in wavelengths
-  const [planarRadius, setPlanarRadius] = useState([0.5, 1.0, 1.5]);        // Ring radii for circular arrays
-  const [planarRadiusRaw, setPlanarRadiusRaw] = useState('0.5, 1.0, 1.5');  // Raw string input for radii
+  const [planarRadius, setPlanarRadius] = useState([0.5, 1.25]);        // Ring radii for circular arrays
+  const [planarRadiusRaw, setPlanarRadiusRaw] = useState('0.5, 1.25');  // Raw string input for radii
   const [planarScanAngle, setPlanarScanAngle] = useState([0, 0]);           // Scan angles [theta, phi] in degrees
   const [planarElementPattern, setPlanarElementPattern] = useState(true);   // Apply element pattern
   const [planarWindow, setPlanarWindow] = useState('');                     // Window function type
@@ -82,6 +82,9 @@ function App() {
     '#0074D9', '#FF4136', '#2ECC40', '#FF851B', '#B10DC9', '#FFDC00', '#001f3f', '#39CCCC', '#01FF70', '#85144b',
     '#F012BE', '#3D9970', '#111111', '#AAAAAA'
   ];
+
+  // Add state for planar pattern cut annotation
+  const [planarAnnotate, setPlanarAnnotate] = useState(false);
 
   // ============================================================================
   // API FUNCTIONS
@@ -281,6 +284,13 @@ function App() {
     if (result && activeTab === 'linear') {
       const newPlotType = plotType === 'cartesian' ? 'polar' : 'cartesian';
       setPlotType(newPlotType);
+    }
+  };
+
+  // Add toggle function for planar annotation
+  const togglePlanarAnnotate = () => {
+    if (result && activeTab === 'planar' && planarPlotType === 'pattern_cut') {
+      setPlanarAnnotate(a => !a);
     }
   };
 
@@ -506,7 +516,14 @@ function App() {
     if (!result || !result.theta || !result.pattern) return;
     
     // Compose a descriptive label with key parameters
-    const label = `${planarArrayType.toUpperCase()}, N=${planarNumElem.join('x')}, d=${planarElementSpacing.join('x')}, θ₀=[${planarScanAngle.join(',')}], cut=${planarCutAngle}°`;
+    let label;
+    if (planarArrayType === 'circ') {
+      const parts = planarNumElemRaw.split(',').map(s => s.trim()).filter(s => s !== '');
+      const total = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n > 0).reduce((a, b) => a + b, 0);
+      label = `CIRC, N=${total} (${planarNumElemRaw}), r=[${planarRadiusRaw}], θ₀=[${planarScanAngle.join(',')}], cut=${planarCutAngle}°`;
+    } else {
+      label = `${planarArrayType.toUpperCase()}, N=${planarNumElem.join('x')}, d=${planarElementSpacing.join('x')}, θ₀=[${planarScanAngle.join(',')}], cut=${planarCutAngle}°`;
+    }
     
     // Assign color from palette (cycles through colors)
     const color = colorPalette[planarTraces.length % colorPalette.length];
@@ -521,8 +538,11 @@ function App() {
         visible: true,
         params: {
           arrayType: planarArrayType,
-          numElem: planarNumElem,
+          numElem: planarArrayType === 'circ'
+            ? planarNumElemRaw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0)
+            : planarNumElem,
           elementSpacing: planarElementSpacing,
+          radii: planarArrayType === 'circ' ? planarRadiusRaw : undefined,
           scanAngle: planarScanAngle,
           cutAngle: planarCutAngle,
           windowType: planarWindowType,
@@ -887,7 +907,7 @@ function App() {
             <option value="pattern_cut">Pattern Cut</option>
             <option value="manifold">Array Manifold</option>
             <option value="polar3d">3D Polar</option>
-            <option value="contour">Contour Plot</option>
+            {/* <option value="contour">Contour Plot</option> */}
             <option value="polarsurf">Polar Surface</option>
           </select>
         </label>
@@ -916,6 +936,7 @@ function App() {
               value="window" 
               checked={planarWindowType === 'window'} 
               onChange={e => setPlanarWindowType(e.target.value)} 
+              disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
             />
             &nbsp;Window Function
           </label>
@@ -926,16 +947,16 @@ function App() {
               value="SLL" 
               checked={planarWindowType === 'SLL'} 
               onChange={e => setPlanarWindowType(e.target.value)} 
+              disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
             />
             &nbsp;Set SLL
           </label>
         </div>
       </div>
-      
       {planarWindowType === 'window' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
           <label>Pre-defined Window :&nbsp;
-            <select value={planarWindow} onChange={e => setPlanarWindow(e.target.value)} style={{ width: 150 }}>
+            <select value={planarWindow} onChange={e => setPlanarWindow(e.target.value)} style={{ width: 150 }} disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}>
               <option value="">No Window</option>
               {windowOptions.map(option => (
                 <option key={option} value={option}>{option}</option>
@@ -944,7 +965,6 @@ function App() {
           </label>
         </div>
       )}
-      
       {planarWindowType === 'SLL' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
           <label>SLL (dB):&nbsp;
@@ -955,6 +975,7 @@ function App() {
               value={planarSLL} 
               onChange={e => setPlanarSLL(e.target.value)} 
               style={{ width: 80 }} 
+              disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
             />
           </label>
         </div>
@@ -1159,7 +1180,7 @@ function App() {
       const baseLayout = {
         width: 528,
         height: 300,
-        margin: { l: 0, r: 0, t: 0, b: 0 },
+        margin: { l: 60, r: 20, t: 30, b: 40 },
         showlegend: false,
         plot_bgcolor: '#fff',
         paper_bgcolor: '#fff',
@@ -1168,44 +1189,52 @@ function App() {
       if (plotType === 'cartesian') {
         return {
           ...baseLayout,
+          title: {
+            text: '<b>Gain Pattern<b>', 
+            font: { size: 14, color: '#222'},      
+            xref: 'paper',
+            x: 0.5, // Center the title
+          },
           xaxis: {
-            title: 'Angle (deg)',
+            title: { text: 'Angle (deg)', font: { size: 12, color: '#222' } },
             showgrid: true,
             range: xMin !== '' && xMax !== '' ? [Number(xMin), Number(xMax)] : undefined,
             dtick: xStep !== '' ? Number(xStep) : undefined,
+            automargin: true,
           },
-                      yaxis: {
-              title: 'Array Factor (dB)',
-              showgrid: true,
-              range: yMin !== '' && yMax !== '' ? [Number(yMin), Number(yMax)] : undefined,
-              dtick: yStep !== '' ? Number(yStep) : undefined,
+          yaxis: {
+            title: { text: 'dB', font: { size: 12, color: '#222' } },
+            showgrid: true,
+            range: yMin !== '' && yMax !== '' ? [Number(yMin), Number(yMax)] : undefined,
+            dtick: yStep !== '' ? Number(yStep) : undefined,
+            automargin: true,
+          },
+          annotations: annotate && result && result.peak_angle !== undefined ? [
+            {
+              x: result.peak_angle + 0.5 * result.hpbw,
+              y: result.gain,
+              text: `Peak: ${result.gain.toFixed(1)} dB @ ${result.peak_angle.toFixed(1)}°`,
+              showarrow: false,
+              font: { color: 'green' },
+              xanchor: 'left'
             },
-                          annotations: annotate && result && result.peak_angle !== undefined ? [
-                {
-                  x: result.peak_angle + 0.5 * result.hpbw,
-                  y: result.gain,
-                  text: `Peak: ${result.gain.toFixed(1)} dB @ ${result.peak_angle.toFixed(1)}°`,
-                  showarrow: false,
-                  font: { color: 'green' },
-                  xanchor: 'left'
-                },
-                {
-                  x: result.peak_angle + 1 * result.hpbw,
-                  y: result.gain - 3,
-                  text: `HPBW: ${result.hpbw.toFixed(1)}°`,
-                  showarrow: false,
-                  font: { color: 'black' },
-                  xanchor: 'left'
-                },
-                {
-                  x: result.peak_angle + 2 * result.hpbw,
-                  y: result.gain - result.sll + 1,
-                  text: `SLL: ${result.sll.toFixed(1)} dB`,
-                  showarrow: false,
-                  font: { color: 'red' },
-                  xanchor: 'left'
-                }
-              ] : [],
+            {
+              x: result.peak_angle + 1 * result.hpbw,
+              y: result.gain - 3,
+              text: `HPBW: ${result.hpbw.toFixed(1)}°`,
+              showarrow: false,
+              font: { color: 'black' },
+              xanchor: 'left'
+            },
+            {
+              x: result.peak_angle + 2 * result.hpbw,
+              y: result.gain - result.sll + 1,
+              text: `SLL: ${result.sll.toFixed(1)} dB`,
+              showarrow: false,
+              font: { color: 'red' },
+              xanchor: 'left'
+            }
+          ] : [],
         };
       } else {
         return {
@@ -1588,32 +1617,102 @@ function App() {
           }]
         : [];
 
-      return [...baseTraces, ...currentTrace];
+      // Annotation traces for planar pattern cut
+      const annotationTraces = [];
+      if (planarAnnotate && result && result.peak_angle !== undefined && result.sll !== undefined && result.hpbw !== undefined) {
+        const peakAngle = result.peak_angle;
+        const peakValue = result.gain;
+        const sllValue = peakValue - result.sll;
+        const hpbwLeft = peakAngle - result.hpbw / 2;
+        const hpbwRight = peakAngle + result.hpbw / 2;
+        // HPBW line
+        annotationTraces.push({
+          x: [hpbwLeft, hpbwRight],
+          y: [peakValue - 3, peakValue - 3],
+          type: 'scatter',
+          mode: 'lines',
+          name: 'HPBW',
+          line: { color: 'black', width: 2, dash: 'dot' },
+          opacity: 0.5,
+          showlegend: false,
+        });
+        // SLL line
+        annotationTraces.push({
+          x: [result.theta[0], result.theta[result.theta.length - 1]],
+          y: [sllValue, sllValue],
+          type: 'scatter',
+          mode: 'lines',
+          name: 'SLL',
+          line: { color: 'red', width: 2, dash: 'dot' },
+          opacity: 0.5,
+          showlegend: false,
+        });
+      }
+      return [...baseTraces, ...currentTrace, ...annotationTraces];
     };
 
     /**
      * Generates plot layout for planar array pattern cuts
      */
-    const getPlanarPlotLayout = () => ({
-              width: 528,
-      height: 300,
-              margin: { l: 50, r: 20, t: 30, b: 50 },
-              xaxis: {
-                title: 'Angle (deg)',
-                showgrid: true,
-        range: xMin !== '' && xMax !== '' ? [Number(xMin), Number(xMax)] : undefined,
-        dtick: xStep !== '' ? Number(xStep) : undefined,
-              },
-              yaxis: {
-                title: 'Array Factor (dB)',
-                showgrid: true,
-        range: yMin !== '' && yMax !== '' ? [Number(yMin), Number(yMax)] : undefined,
-        dtick: yStep !== '' ? Number(yStep) : undefined,
-              },
-      showlegend: false,
-              plot_bgcolor: '#fff',
-              paper_bgcolor: '#fff',
-    });
+    const getPlanarPlotLayout = () => {
+      const baseLayout = {
+        width: 528,
+        height: 300,
+        margin: { l: 60, r: 20, t: 30, b: 40 },
+        showlegend: false,
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff',
+      };
+      return {
+        ...baseLayout,
+        title: {
+          text: '<b>Pattern Cut<b>',
+          font: { size: 14, color: '#222' },
+          xref: 'paper',
+          x: 0.5,
+        },
+        xaxis: {
+          title: { text: 'Angle (deg)', font: { size: 12, color: '#222' } },
+          showgrid: true,
+          range: xMin !== '' && xMax !== '' ? [Number(xMin), Number(xMax)] : undefined,
+          dtick: xStep !== '' ? Number(xStep) : undefined,
+          automargin: true,
+        },
+        yaxis: {
+          title: { text: 'dB', font: { size: 12, color: '#222' } },
+          showgrid: true,
+          range: yMin !== '' && yMax !== '' ? [Number(yMin), Number(yMax)] : undefined,
+          dtick: yStep !== '' ? Number(yStep) : undefined,
+          automargin: true,
+        },
+        annotations: planarAnnotate && result && result.peak_angle !== undefined ? [
+          {
+            x: result.peak_angle + 0.5 * result.hpbw,
+            y: result.gain,
+            text: `Peak: ${result.gain.toFixed(1)} dB @ ${result.peak_angle.toFixed(1)}°`,
+            showarrow: false,
+            font: { color: 'green' },
+            xanchor: 'left'
+          },
+          {
+            x: result.peak_angle + 1 * result.hpbw,
+            y: result.gain - 3,
+            text: `HPBW: ${result.hpbw.toFixed(1)}°`,
+            showarrow: false,
+            font: { color: 'black' },
+            xanchor: 'left'
+          },
+          {
+            x: result.peak_angle + 2 * result.hpbw,
+            y: result.gain - result.sll + 1,
+            text: `SLL: ${result.sll.toFixed(1)} dB`,
+            showarrow: false,
+            font: { color: 'red' },
+            xanchor: 'left'
+          }
+        ] : [],
+      };
+    };
 
     return (
       <div>
@@ -1657,6 +1756,25 @@ function App() {
             )}
           </div>
         </div>
+        
+        {planarPlotType === 'pattern_cut' && result.theta && result.pattern && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+            <button
+              onClick={togglePlanarAnnotate}
+              style={{
+                padding: '8px 16px',
+                fontSize: 14,
+                background: planarAnnotate ? '#0074D9' : '#f5f5f5',
+                color: planarAnnotate ? 'white' : 'black',
+                border: '1px solid #ddd',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {planarAnnotate ? 'Hide Annotations' : 'Show Annotations'}
+            </button>
+          </div>
+        )}
         
         {planarPlotType === 'pattern_cut' && result.theta && result.pattern ? (
           <>
@@ -1736,8 +1854,26 @@ function App() {
                           <span style={{ display: 'inline-block', width: 16, height: 8, background: trace.color, borderRadius: 2, border: '1px solid #ccc' }}></span>
                         </td>
                         <td style={{ padding: 4 }}>{trace.params.arrayType}</td>
-                        <td style={{ padding: 4 }}>{Array.isArray(trace.params.numElem) ? trace.params.numElem.join('x') : trace.params.numElem}</td>
-                        <td style={{ padding: 4 }}>{Array.isArray(trace.params.elementSpacing) ? trace.params.elementSpacing.join('x') : trace.params.elementSpacing}</td>
+                        <td style={{ padding: 4 }}>
+                          {trace.params.arrayType === 'circ'
+                            ? (() => {
+                                const parts = Array.isArray(trace.params.numElem)
+                                  ? trace.params.numElem
+                                  : String(trace.params.numElem).split(',').map(s => s.trim());
+                                const total = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n > 0).reduce((a, b) => a + b, 0);
+                                return `${total} (${parts.join(',')})`;
+                              })()
+                            : (Array.isArray(trace.params.numElem) ? trace.params.numElem.join('x') : trace.params.numElem)
+                          }
+                        </td>
+                        <td style={{ padding: 4 }}>
+                          {trace.params.arrayType === 'circ'
+                            ? (trace.params.radii
+                                ? (Array.isArray(trace.params.radii) ? trace.params.radii.join(',') : trace.params.radii)
+                                : '')
+                            : (Array.isArray(trace.params.elementSpacing) ? trace.params.elementSpacing.join('x') : trace.params.elementSpacing)
+                          }
+                        </td>
                         <td style={{ padding: 4 }}>{trace.params.cutAngle}°</td>
                         <td style={{ padding: 4 }}>
                           <button
@@ -1751,7 +1887,7 @@ function App() {
                       </tr>
                     ))}
                     {/* Current trace */}
-                    {result && result.theta && result.pattern && (
+                    {planarShowCurrent && result && result.theta && result.pattern && (
                       <tr>
                         <td style={{ padding: 4 }}>
                           <input
@@ -1765,8 +1901,23 @@ function App() {
                           <span style={{ display: 'inline-block', width: 16, height: 8, background: '#0074D9', borderRadius: 2, border: '1px solid #ccc' }}></span>
                         </td>
                         <td style={{ padding: 4 }}>{planarArrayType}</td>
-                        <td style={{ padding: 4 }}>{Array.isArray(planarNumElem) ? planarNumElem.join('x') : planarNumElem}</td>
-                        <td style={{ padding: 4 }}>{Array.isArray(planarElementSpacing) ? planarElementSpacing.join('x') : planarElementSpacing}</td>
+                        <td style={{ padding: 4 }}>
+                          {planarArrayType === 'circ'
+                            ? (() => {
+                                const parts = planarNumElemRaw.split(',').map(s => s.trim()).filter(s => s !== '');
+                                const nums = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n > 0);
+                                const total = nums.reduce((a, b) => a + b, 0);
+                                return `${total} (${nums.join(',')})`;
+                              })()
+                            : (Array.isArray(planarNumElem) ? planarNumElem.join('x') : planarNumElem)
+                        }
+                        </td>
+                        <td style={{ padding: 4 }}>
+                          {planarArrayType === 'circ'
+                            ? planarRadiusRaw
+                            : (Array.isArray(planarElementSpacing) ? planarElementSpacing.join('x') : planarElementSpacing)
+                        }
+                        </td>
                         <td style={{ padding: 4 }}>{planarCutAngle}°</td>
                         <td style={{ padding: 4, color: '#888', fontSize: 12 }}>Current</td>
                       </tr>

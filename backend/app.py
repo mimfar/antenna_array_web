@@ -139,7 +139,7 @@ def analyze_planar_array():
         # Calculate array factor (expensive computation)
         AF = arr.calc_AF
           # Calculate pattern parameters
-        pattern_params = arr.calc_peak_sll_hpbw()
+        pattern_params = arr.calc_peak_sll_hpbw(cut_angle)
         # Cache the array instance for future use
         array_cache[array_key] = arr
         print(f"Created and cached new array for key: {array_key}")
@@ -148,7 +148,7 @@ def analyze_planar_array():
     manifold_x = (arr.X - np.mean(arr.X)).tolist()
     manifold_y = (arr.Y - np.mean(arr.Y)).tolist()
     
-    pattern_params = arr.calc_peak_sll_hpbw()
+    pattern_params = arr.calc_peak_sll_hpbw(cut_angle)
 
     
    
