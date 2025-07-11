@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import random
 import io
@@ -9,11 +9,39 @@ from planar_array import PlanarArray
 import numpy as np
 import hashlib
 import json
+import os
 
-app = Flask(__name__)
-CORS(app)  # or simply CORS(app)
+ 
+      
 
+# app = Flask(__name__)
+app = Flask(
+    __name__,
+    static_folder=os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build', 'static'),
+    static_url_path='/static'
+)
+# 
+@app.route('/test')
+def test():
+    return "Flask is working!"
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    print(f"Requested path: {path}")
+    
+    # Handle specific static files in root
+    if path in ['favicon.ico', 'manifest.json', 'robots.txt', 'logo192.png', 'logo512.png', 'asset-manifest.json']:
+        return send_from_directory('../frontend/build', path)
+    
+    # For any other path, serve index.html (React routing)
+    return send_from_directory('../frontend/build', 'index.html')
+
+# Allow all origins for development troubleshooting
+# CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app)
 # Global storage for array instances to avoid recalculation
+
 array_cache = {}
 
 def get_array_key(array_type, array_params):
@@ -21,8 +49,6 @@ def get_array_key(array_type, array_params):
     # Create a hash of the array parameters
     param_str = json.dumps(array_params, sort_keys=True)
     return f"{array_type}_{hashlib.md5(param_str.encode()).hexdigest()}"
-
-
 
 @app.route('/api/linear-array/analyze', methods=['POST'])
 def analyze_linear_array():
@@ -255,9 +281,9 @@ def analyze_planar_array():
             }
         return jsonify(response)
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    app.run(debug=True, port=5000)
+#     app.run(port=5000)
 
 
 

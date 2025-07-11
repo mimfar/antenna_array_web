@@ -33,14 +33,14 @@ function App() {
   const [window, setWindow] = useState('');                     // Window function type (hann, hamming, etc.)
   const [SLL, setSLL] = useState(20);                           // Side lobe level for SLL-based tapering
   const [windowType, setWindowType] = useState('window');       // Tapering method: 'window' or 'SLL'
-  const [showManifold, setShowManifold] = useState(false);      // Show array manifold plot
+  // const [showManifold, setShowManifold] = useState(false);      // Show array manifold plot
   
   // Planar array analysis parameters
   const [planarArrayType, setPlanarArrayType] = useState('rect');           // Array type: 'rect', 'tri', 'circ'
   const [planarNumElem, setPlanarNumElem] = useState([8, 8]);               // Number of elements [rows, cols] for rect/tri
   const [planarNumElemRaw, setPlanarNumElemRaw] = useState('8, 8');         // Raw string input for circular arrays
   const [planarElementSpacing, setPlanarElementSpacing] = useState(["0.5", "0.5"]); // Element spacing [x, y] in wavelengths
-  const [planarRadius, setPlanarRadius] = useState([0.5, 1.25]);        // Ring radii for circular arrays
+  // const [planarRadius, setPlanarRadius] = useState([0.5, 1.25]);        // Ring radii for circular arrays
   const [planarRadiusRaw, setPlanarRadiusRaw] = useState('0.5, 1.25');  // Raw string input for radii
   const [planarScanAngle, setPlanarScanAngle] = useState([0, 0]);           // Scan angles [theta, phi] in degrees
   const [planarElementPattern, setPlanarElementPattern] = useState(true);   // Apply element pattern
@@ -115,7 +115,7 @@ function App() {
     const validatedScanAngle = parseFloat(scanAngle);
     
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/linear-array/analyze', {
+      const response = await fetch('http://127.0.0.1:5002/api/linear-array/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -222,7 +222,7 @@ function App() {
     });
     
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/planar-array/analyze', {
+      const response = await fetch('http://127.0.0.1:5002/api/planar-array/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -345,7 +345,7 @@ function App() {
       analyzeLinearArray();
     }
     // Optionally, you could clear the result or show a message if invalid
-  }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern]);
+  }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern,activeTab]);
 
   // Add useEffect to auto-analyze when element gain changes for linear array
   useEffect(() => {
@@ -1788,31 +1788,31 @@ function App() {
             config={{ responsive: true, displayModeBar: true }}
           />
                 <div style={{ display: 'flex', gap: 4, marginTop: 16, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap', fontSize: 11 }}>
-                  <label style={{ margin: 0 }}>
-                    X min:&nbsp;
+            <label style={{ margin: 0 }}>
+              X min:&nbsp;
                     <input type="number" value={xMin} onChange={e => setXMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
-                  </label>
-                  <label style={{ margin: 0 }}>
-                    X max:&nbsp;
+            </label>
+            <label style={{ margin: 0 }}>
+              X max:&nbsp;
                     <input type="number" value={xMax} onChange={e => setXMax(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
-                  </label>
-                  <label style={{ margin: 0 }}>
-                    X step:&nbsp;
+            </label>
+            <label style={{ margin: 0 }}>
+              X step:&nbsp;
                     <input type="number" value={xStep} onChange={e => setXStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
-                  </label>
-                  <label style={{ margin: 0 }}>
-                    Y min:&nbsp;
+            </label>
+            <label style={{ margin: 0 }}>
+              Y min:&nbsp;
                     <input type="number" value={yMin} onChange={e => setYMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
-                  </label>
-                  <label style={{ margin: 0 }}>
-                    Y max:&nbsp;
+            </label>
+            <label style={{ margin: 0 }}>
+              Y max:&nbsp;
                     <input type="number" value={yMax} onChange={e => setYMax(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
-                  </label>
-                  <label style={{ margin: 0 }}>
-                    Y step:&nbsp;
+            </label>
+            <label style={{ margin: 0 }}>
+              Y step:&nbsp;
                     <input type="number" value={yStep} onChange={e => setYStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
-                  </label>
-                </div>
+            </label>
+          </div>
               </div>
               {/* Legend area */}
               <div style={{ flex: '1 1 0', minWidth: 260, maxWidth: 340, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
@@ -1922,11 +1922,11 @@ function App() {
                         <td style={{ padding: 4, color: '#888', fontSize: 12 }}>Current</td>
                       </tr>
                     )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
+        </tbody>
+      </table>
+    </div>
+      </div>
+      
             {/* Manifold plot */}
           {result.manifold_x && result.manifold_y && (
               <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
