@@ -115,7 +115,7 @@ function App() {
     const validatedScanAngle = parseFloat(scanAngle);
     
     try {
-      const response = await fetch('http://127.0.0.1:5002/api/linear-array/analyze', {
+      const response = await fetch('/api/linear-array/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -222,7 +222,7 @@ function App() {
     });
     
     try {
-      const response = await fetch('http://127.0.0.1:5002/api/planar-array/analyze', {
+      const response = await fetch('/api/planar-array/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
