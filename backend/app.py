@@ -28,9 +28,9 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build', 'static'),
     static_url_path='/static'
 )
-
 # Apply configuration
 app.config.from_object(config)
+
 # 
 @app.route('/test')
 def test():

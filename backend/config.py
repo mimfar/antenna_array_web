@@ -27,17 +27,20 @@ class Config:
 
 class DevelopmentConfig(Config):
     """Development configuration"""
+    ENV = 'development'
     DEBUG = True
     CORS_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000']
     
 class ProductionConfig(Config):
     """Production configuration"""
+    ENV = 'production'
     DEBUG = False
     # In production, you should set CORS_ORIGINS via environment variable
     # Example: CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
     
 class TestingConfig(Config):
     """Testing configuration"""
+    ENV = 'testing'
     TESTING = True
     CORS_ORIGINS = ['http://localhost:3000']
 
