@@ -12,6 +12,9 @@ import json
 import os
 from config import get_config
 from collections import OrderedDict
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_limiter.errors import RateLimitExceeded
 
  
       
@@ -33,6 +36,8 @@ app.config.from_object(config)
 def test():
     return "Flask is working!"
 
+
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
@@ -44,6 +49,13 @@ def serve(path):
     
     # For any other path, serve index.html (React routing)
     return send_from_directory('../frontend/build', 'index.html')
+
+@app.route('/health')
+def health():
+    return jsonify({
+        'status': 'ok',
+        'environment': app.config.get('ENV', 'unknown')
+    }), 200
 
 # Configure CORS with secure settings
 CORS(app, 
@@ -71,7 +83,22 @@ def get_array_key(array_type, array_params):
     param_str = json.dumps(array_params, sort_keys=True)
     return f"{array_type}_{hashlib.md5(param_str.encode()).hexdigest()}"
 
+# Initialize Limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["3600 per hour"],  # Global default, adjust as needed
+)
+
+@app.errorhandler(RateLimitExceeded)
+def ratelimit_handler(e):
+    return jsonify({
+        "error": "rate_limit_exceeded",
+        "message": "You have exceeded the allowed number of requests. Please try again later."
+    }), 429
+
 @app.route('/api/linear-array/analyze', methods=['POST'])
+@limiter.limit("60 per minute")
 def analyze_linear_array():
     # Input validation
     data = request.get_json()
@@ -139,6 +166,7 @@ def analyze_linear_array():
     return jsonify(response)
 
 @app.route('/api/planar-array/analyze', methods=['POST'])
+@limiter.limit("60 per minute")
 def analyze_planar_array():
     # Input validation
     data = request.get_json()
