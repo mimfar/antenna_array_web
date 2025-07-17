@@ -10,9 +10,14 @@ import numpy as np
 import hashlib
 import json
 import os
+from config import get_config
+from collections import OrderedDict
 
  
       
+
+# Load configuration
+config = get_config()
 
 # app = Flask(__name__)
 app = Flask(
@@ -20,6 +25,9 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build', 'static'),
     static_url_path='/static'
 )
+
+# Apply configuration
+app.config.from_object(config)
 # 
 @app.route('/test')
 def test():
@@ -37,12 +45,25 @@ def serve(path):
     # For any other path, serve index.html (React routing)
     return send_from_directory('../frontend/build', 'index.html')
 
-# Allow all origins for development troubleshooting
-# CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
-CORS(app)
+# Configure CORS with secure settings
+CORS(app, 
+     origins=config.CORS_ORIGINS,
+     methods=config.CORS_METHODS,
+     allow_headers=config.CORS_ALLOW_HEADERS,
+     supports_credentials=config.CORS_SUPPORTS_CREDENTIALS)
 # Global storage for array instances to avoid recalculation
 
-array_cache = {}
+ARRAY_CACHE_MAX_SIZE = 100
+array_cache = OrderedDict()
+
+def cache_array(key, arr):
+    # If key already exists, move it to the end (most recently used)
+    if key in array_cache:
+        array_cache.move_to_end(key)
+    array_cache[key] = arr
+    # If cache exceeds max size, remove the oldest item
+    if len(array_cache) > ARRAY_CACHE_MAX_SIZE:
+        array_cache.popitem(last=False)  # Remove least recently used
 
 def get_array_key(array_type, array_params):
     """Generate a unique key for array caching"""
@@ -52,9 +73,23 @@ def get_array_key(array_type, array_params):
 
 @app.route('/api/linear-array/analyze', methods=['POST'])
 def analyze_linear_array():
+    # Input validation
     data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid JSON data'}), 400
+    
+    # Validate required fields
     num_elem = data.get('num_elem')
     element_spacing = data.get('element_spacing')
+    
+    # Security checks
+    if num_elem <= 0 or num_elem > config.MAX_ELEMENTS:
+        return jsonify({'error': f'num_elem must be between 1 and {config.MAX_ELEMENTS}'}), 400
+    
+    if element_spacing <= 0 or element_spacing > config.MAX_SPACING:
+        return jsonify({'error': f'element_spacing must be between 0 and {config.MAX_SPACING}'}), 400
+    
+    # Get other parameters with defaults
     scan_angle = data.get('scan_angle', 0)
     element_pattern = data.get('element_pattern', True)
     annotate = data.get('annotate', False)
@@ -105,11 +140,20 @@ def analyze_linear_array():
 
 @app.route('/api/planar-array/analyze', methods=['POST'])
 def analyze_planar_array():
+    # Input validation
     data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid JSON data'}), 400
     
-    # Extract array parameters
+    # Extract and validate array parameters
     array_type = data.get('array_type', 'rect')
+    if array_type not in ['rect', 'tri', 'circ']:
+        return jsonify({'error': 'array_type must be rect, tri, or circ'}), 400
+    
     scan_angle = data.get('scan_angle', [0, 0])
+    
+
+    # Get other parameters with defaults
     element_pattern = data.get('element_pattern', True)
     window = data.get('window', None)
     SLL = data.get('SLL', None)
@@ -135,6 +179,14 @@ def analyze_planar_array():
         raise ValueError("Custom array type not yet implemented")
     else:
         raise ValueError(f"Invalid array type: {array_type}")
+
+    total_num_elem = num_elem[0] * num_elem[1] if array_type in ['rect','tri'] else sum(num_elem)    
+        # Security checks
+    if total_num_elem <= 0 or total_num_elem > config.MAX_ELEMENTS:
+        return jsonify({'error': f'num_elem values must be between 1 and {config.MAX_ELEMENTS}'}), 400
+    
+    if any(s <= 0 or s > config.MAX_SPACING for s in element_spacing):
+        return jsonify({'error': f'element_spacing values must be between 0 and {config.MAX_SPACING}'}), 400
     
     # Create array parameters for caching
     array_params = {
@@ -167,7 +219,7 @@ def analyze_planar_array():
           # Calculate pattern parameters
         pattern_params = arr.calc_peak_sll_hpbw(cut_angle)
         # Cache the array instance for future use
-        array_cache[array_key] = arr
+        cache_array(array_key, arr)
         print(f"Created and cached new array for key: {array_key}")
     
     # Get manifold data
@@ -281,9 +333,9 @@ def analyze_planar_array():
             }
         return jsonify(response)
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
 
-#     app.run(port=5000)
+    app.run(port=5001)
 
 
 
