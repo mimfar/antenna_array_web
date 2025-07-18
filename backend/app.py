@@ -15,6 +15,8 @@ from collections import OrderedDict
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_limiter.errors import RateLimitExceeded
+import logging
+from logging.handlers import RotatingFileHandler
 
  
       
@@ -30,6 +32,24 @@ app = Flask(
 )
 # Apply configuration
 app.config.from_object(config)
+
+# Set up logging
+if not os.path.exists('logs'):
+    os.mkdir('logs')
+
+file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+)
+file_handler.setFormatter(formatter)
+app.logger.addHandler(file_handler)
+
+# Add console logging for cloud deployment
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+app.logger.addHandler(stream_handler)
 
 # 
 @app.route('/test')
@@ -92,6 +112,7 @@ limiter = Limiter(
 
 @app.errorhandler(RateLimitExceeded)
 def ratelimit_handler(e):
+    app.logger.warning(f"Rate limit exceeded: {e.description}")
     return jsonify({
         "error": "rate_limit_exceeded",
         "message": "You have exceeded the allowed number of requests. Please try again later."
@@ -100,9 +121,11 @@ def ratelimit_handler(e):
 @app.route('/api/linear-array/analyze', methods=['POST'])
 @limiter.limit("60 per minute")
 def analyze_linear_array():
+    app.logger.info("/api/linear-array/analyze called")
     # Input validation
     data = request.get_json()
     if not data:
+        app.logger.warning("No JSON data received in linear array analysis request")
         return jsonify({'error': 'Invalid JSON data'}), 400
     
     # Validate required fields
@@ -111,9 +134,11 @@ def analyze_linear_array():
     
     # Security checks
     if num_elem <= 0 or num_elem > config.MAX_ELEMENTS:
+        app.logger.warning(f"num_elem out of allowed range: {num_elem}")
         return jsonify({'error': f'num_elem must be between 1 and {config.MAX_ELEMENTS}'}), 400
     
     if element_spacing <= 0 or element_spacing > config.MAX_SPACING:
+        app.logger.warning(f"element_spacing out of allowed range: {element_spacing}")
         return jsonify({'error': f'element_spacing must be between 0 and {config.MAX_SPACING}'}), 400
     
     # Get other parameters with defaults
@@ -163,23 +188,32 @@ def analyze_linear_array():
         'ymin': ymin,
         'ymax': ymax
     }
+    app.logger.info(f"Linear array analysis successful for num_elem={num_elem}, element_spacing={element_spacing}")
     return jsonify(response)
 
 @app.route('/api/planar-array/analyze', methods=['POST'])
 @limiter.limit("60 per minute")
 def analyze_planar_array():
+    app.logger.info("/api/planar-array/analyze called")
     # Input validation
     data = request.get_json()
     if not data:
+        app.logger.warning("No JSON data received in planar array analysis request")
         return jsonify({'error': 'Invalid JSON data'}), 400
     
     # Extract and validate array parameters
     array_type = data.get('array_type', 'rect')
     if array_type not in ['rect', 'tri', 'circ']:
+        app.logger.warning(f"Invalid array_type: {array_type}")
         return jsonify({'error': 'array_type must be rect, tri, or circ'}), 400
     
     scan_angle = data.get('scan_angle', [0, 0])
     
+    try:
+        scan_angle = [float(scan_angle[0]), float(scan_angle[1])]
+    except (ValueError, TypeError):
+        app.logger.error("Invalid scan_angle values")
+        return jsonify({'error': 'scan_angle values must be numbers'}), 400
 
     # Get other parameters with defaults
     element_pattern = data.get('element_pattern', True)
@@ -284,6 +318,7 @@ def analyze_planar_array():
             'ymin': ymin,
             'ymax': ymax
         }
+        app.logger.info(f"Planar array analysis successful for array_type={array_type}, scan_angle={scan_angle}")
         return jsonify(response)
         
     elif plot_type == 'manifold':
