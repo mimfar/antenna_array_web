@@ -2176,6 +2176,36 @@ function App() {
           </div>
         </div>
       </div>
+
+      <div style={{
+        position: 'absolute',
+        top: 24,
+        right: 32,
+        zIndex: 1000
+      }}>
+        <a
+          href="https://forms.gle/wVhn4PmyDMxEJcD67"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            padding: '10px 22px',
+            background: '#0074D9',
+            color: 'white',
+            borderRadius: '6px',
+            fontWeight: 600,
+            textDecoration: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+            fontSize: 16,
+            letterSpacing: 0.5,
+            transition: 'background 0.2s',
+          }}
+          onMouseOver={e => e.currentTarget.style.background = '#005fa3'}
+          onMouseOut={e => e.currentTarget.style.background = '#0074D9'}
+        >
+          Feedback
+        </a>
+      </div>
     </div>
   );
 }
