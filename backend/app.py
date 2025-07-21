@@ -246,10 +246,13 @@ def analyze_planar_array():
         # Security checks
     if total_num_elem <= 0 or total_num_elem > config.MAX_ELEMENTS:
         return jsonify({'error': f'num_elem values must be between 1 and {config.MAX_ELEMENTS}'}), 400
-    
-    if any(s <= 0 or s > config.MAX_SPACING for s in element_spacing):
-        return jsonify({'error': f'element_spacing values must be between 0 and {config.MAX_SPACING}'}), 400
-    
+    if array_type in ['rect','tri']:
+        if any(s <= 0 or s > config.MAX_SPACING for s in element_spacing):
+            return jsonify({'error': f'element_spacing values must be between 0 and {config.MAX_SPACING}'}), 400
+    # if array_type in ['circ']:
+    #     if any(s <= 0 or s > config.MAX_SPACING for s in radius):
+    #         return jsonify({'error': f'element_spacing values must be between 0 and {config.MAX_SPACING}'}), 400
+
     # Create array parameters for caching
     array_params = {
         'array_shape': array_shape,

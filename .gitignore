@@ -33,4 +33,5 @@ yarn-error.log*
 coverage/
 test_planar_timing.py
 # Misc
-*.log 
+*.log.*
+*.log

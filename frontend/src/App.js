@@ -86,6 +86,27 @@ function App() {
   // Add state for planar pattern cut annotation
   const [planarAnnotate, setPlanarAnnotate] = useState(false);
 
+  // Add realtime state
+  const [realtime, setRealtime] = useState(true);
+
+  const realtimeRef = useRef(realtime);
+  useEffect(() => {
+    realtimeRef.current = realtime;
+  }, [realtime]);
+  // Helper for input change with realtime analysis
+  const handleLinearInputChange = (handler) => {
+    handler();
+    if (realtimeRef.current) {
+      analyzeLinearArray();
+    }
+  };
+  const handlePlanarInputChange = (handler) => {
+    handler();
+    if (realtimeRef.current) {
+      analyzePlanarArray();
+    }
+  };
+
   // ============================================================================
   // API FUNCTIONS
   // ============================================================================
@@ -261,7 +282,6 @@ function App() {
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setResult(null);
     if (activeTab === 'linear') {
       await analyzeLinearArray();
     } else {
@@ -339,7 +359,9 @@ function App() {
   // Add useEffect to auto-analyze when number of elements changes for linear array
   useEffect(() => {
     // Only trigger if all required fields are valid numbers and not empty
+    
     if (
+      realtime &&
       activeTab === 'linear' &&
       numElem !== '' && !isNaN(Number(numElem)) && Number(numElem) > 0 && Number(numElem) <= 2000 &&
       elementSpacing !== '' && !isNaN(Number(elementSpacing)) && Number(elementSpacing) > 0 &&
@@ -348,11 +370,12 @@ function App() {
       analyzeLinearArray();
     }
     // Optionally, you could clear the result or show a message if invalid
-  }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern,activeTab]);
+  }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern,activeTab,realtime]);
 
   // Add useEffect to auto-analyze when element gain changes for linear array
   useEffect(() => {
     if (
+      realtime &&
       activeTab === 'linear' &&
       numElem !== '' && !isNaN(Number(numElem)) && Number(numElem) > 0 &&
       elementSpacing !== '' && !isNaN(Number(elementSpacing)) && Number(elementSpacing) > 0 &&
@@ -361,10 +384,11 @@ function App() {
     ) {
       analyzeLinearArray();
     }
-  }, [elementGain]);
+  }, [elementGain,realtime]);
 
   // Auto-analyze planar array when relevant fields change (interactive update)
   useEffect(() => {
+    if (realtime) {
     if (activeTab !== 'planar') return;
     // Trigger for all plot types including 3D plots
     if (!['pattern_cut', 'manifold', 'polar3d', 'contour', 'polarsurf'].includes(planarPlotType)) return;
@@ -389,6 +413,7 @@ function App() {
       }
       analyzePlanarArray();
     }
+    
     // Validation for circular arrays
     else if (planarArrayType === 'circ') {
       // Validate number of elements per ring
@@ -401,7 +426,8 @@ function App() {
       if (planarScanAngle[0] === '' || isNaN(Number(planarScanAngle[0])) || planarScanAngle[1] === '' || isNaN(Number(planarScanAngle[1]))) return;
       analyzePlanarArray();
     }
-  }, [activeTab, planarArrayType, planarNumElem, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarScanAngle, planarElementPattern, planarWindow, planarSLL, planarWindowType,planarPlotType, planarCutAngle]);
+  }
+  }, [activeTab, planarArrayType, planarNumElem, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarScanAngle, planarElementPattern, planarWindow, planarSLL, planarWindowType,planarPlotType, planarCutAngle,realtime]);
 
   // Track the last auto-set yMax to avoid overriding user changes
   useEffect(() => {
@@ -595,27 +621,7 @@ function App() {
             min="1"
             max="2000"
             value={numElem}
-            onChange={e => {
-              const val = e.target.value;
-              if (val === '') {
-                setNumElem('');
-                setNumElemError('Number of elements is required.');
-                return;
-              }
-              const num = Number(val);
-              if (isNaN(num) || num < 1) {
-                setNumElem(val);
-                setNumElemError('Enter a positive integer.');
-                return;
-              }
-              if (num > 2000) {
-                setNumElem(2000);
-                setNumElemError('Maximum allowed is 2000 elements.');
-              } else {
-                setNumElem(num);
-                setNumElemError('');
-              }
-            }}
+            onChange={e => handleLinearInputChange(() => setNumElem(e.target.value))}
             required
             style={{ width: 80 }}
           />
@@ -629,7 +635,7 @@ function App() {
             step="0.1"
             min="0.1"
             value={elementSpacing}
-            onChange={e => setElementSpacing(e.target.value)}
+            onChange={e => handleLinearInputChange(() => setElementSpacing(e.target.value))}
             required
             style={{ width: 200 }}
           />
@@ -643,12 +649,7 @@ function App() {
             min="-90"
             max="90"
             value={scanAngle}
-            onChange={e => {
-              let val = Number(e.target.value);
-              if (val > 90) val = 90;
-              if (val < -90) val = -90;
-              setScanAngle(val);
-            }}
+            onChange={e => handleLinearInputChange(() => setScanAngle(e.target.value))}
             required
             style={{ width: 80 }}
           />
@@ -663,7 +664,7 @@ function App() {
               name="windowType" 
               value="window" 
               checked={windowType === 'window'} 
-              onChange={e => setWindowType(e.target.value)} 
+              onChange={e => handleLinearInputChange(() => setWindowType(e.target.value))} 
             />
             &nbsp;Pre-defined Window 
           </label>
@@ -673,7 +674,7 @@ function App() {
               name="windowType" 
               value="SLL" 
               checked={windowType === 'SLL'} 
-              onChange={e => setWindowType(e.target.value)} 
+              onChange={e => handleLinearInputChange(() => setWindowType(e.target.value))} 
             />
             &nbsp;Set SLL
           </label>
@@ -682,7 +683,7 @@ function App() {
       {windowType === 'window' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
           <label>Window Function:&nbsp;
-            <select value={window} onChange={e => setWindow(e.target.value)} style={{ width: 150 }}>
+            <select value={window} onChange={e => handleLinearInputChange(() => setWindow(e.target.value))} style={{ width: 150 }}>
               <option value="">No Window</option>
               {windowOptions.map(option => (
                 <option key={option} value={option}>{option}</option>
@@ -699,7 +700,7 @@ function App() {
               min="13" 
               max="80" 
               value={SLL} 
-              onChange={e => setSLL(e.target.value)} 
+              onChange={e => handleLinearInputChange(() => setSLL(e.target.value))} 
               style={{ width: 80 }} 
             />
           </label>
@@ -707,7 +708,7 @@ function App() {
       )}
       <div style={{ marginBottom: 16 }}>
         <label>
-          <input type="checkbox" checked={elementPattern} onChange={e => setElementPattern(e.target.checked)} />
+          <input type="checkbox" checked={elementPattern} onChange={e => handleLinearInputChange(() => setElementPattern(e.target.checked))} />
           &nbsp;Element Pattern (cosine)
         </label>
         <div style={{ marginTop: 6, marginLeft: 24 }}>
@@ -717,15 +718,40 @@ function App() {
               type="number"
               step="1"
               value={elementGain}
-              onChange={e => setElementGain(e.target.value)}
+              onChange={e => handleLinearInputChange(() => setElementGain(e.target.value))}
               disabled={!elementPattern}
               style={{ width: 80 }}
             />
         </label>
         </div>
       </div>
-      <button type="submit" disabled={loading} style={{ padding: '8px 20px', fontSize: 16, width: '100%' }}>
-        {loading ? 'Analyzing...' : 'Analyze Linear Array'}
+      <div style={{ margin: '16px 0 8px 0' }}>
+        <label style={{ fontWeight: 500 }}>
+          <input
+            type="checkbox"
+            checked={realtime}
+            onChange={e => setRealtime(e.target.checked)}
+            style={{ marginRight: 8 }}
+          />
+          Realtime
+        </label>
+      </div>
+      <button
+        type="submit"
+        disabled={realtime}
+        style={{
+          background: realtime ? '#ccc' : '#0074D9',
+          color: realtime ? '#888' : 'white',
+          cursor: realtime ? 'not-allowed' : 'pointer',
+          border: 'none',
+          borderRadius: 6,
+          padding: '10px 22px',
+          fontWeight: 600,
+          fontSize: 16,
+          marginTop: 8
+        }}
+      >
+        Analyze
       </button>
     </form>
   );
@@ -734,7 +760,7 @@ function App() {
     <form onSubmit={handleSubmit} style={{ background: '#f9f9f9', padding: 20, borderRadius: 8, position: 'sticky', top: 20 }}>
       <div style={{ marginBottom: 16 }}>
         <label>Array Type:&nbsp;
-          <select value={planarArrayType} onChange={e => setPlanarArrayType(e.target.value)} style={{ width: 150 }}>
+          <select value={planarArrayType} onChange={e => handlePlanarInputChange(() => setPlanarArrayType(e.target.value))} style={{ width: 150 }}>
             <option value="rect">Rectangular</option>
             <option value="tri">Triangular</option>
             <option value="circ">Circular</option>
@@ -753,14 +779,7 @@ function App() {
                   type="number" 
                   min="1"
                   value={planarNumElem[0] || ''} 
-                  onChange={e => {
-                    const val = parseInt(e.target.value);
-                    if (!isNaN(val) && val > 0) {
-                      setPlanarNumElem([val, planarNumElem[1] || '']);
-                    } else if (e.target.value === '') {
-                      setPlanarNumElem(['', planarNumElem[1] || '']);
-                    }
-                  }} 
+                  onChange={e => handlePlanarInputChange(() => setPlanarNumElem([e.target.value, planarNumElem[1] || '']))} 
                   style={{ width: 60 }} 
                 />
               </label>
@@ -770,14 +789,7 @@ function App() {
                   type="number" 
                   min="1"
                   value={planarNumElem[1] || ''} 
-                  onChange={e => {
-                    const val = parseInt(e.target.value);
-                    if (!isNaN(val) && val > 0) {
-                      setPlanarNumElem([planarNumElem[0] || '', val]);
-                    } else if (e.target.value === '') {
-                      setPlanarNumElem([planarNumElem[0] || '', '']);
-                    }
-                  }} 
+                  onChange={e => handlePlanarInputChange(() => setPlanarNumElem([planarNumElem[0] || '', e.target.value]))} 
                   style={{ width: 60 }} 
                 />
               </label>
@@ -807,7 +819,7 @@ function App() {
                   step="0.1"
                   min="0"
                   value={planarElementSpacing[0]}
-                  onChange={e => setPlanarElementSpacing([e.target.value, planarElementSpacing[1]])}
+                  onChange={e => handlePlanarInputChange(() => setPlanarElementSpacing([e.target.value, planarElementSpacing[1]]))}
                   style={{ width: 60 }}
                 />
               </label>
@@ -818,7 +830,7 @@ function App() {
                   step="0.1"
                   min="0"
                   value={planarElementSpacing[1]}
-                  onChange={e => setPlanarElementSpacing([planarElementSpacing[0], e.target.value])}
+                  onChange={e => handlePlanarInputChange(() => setPlanarElementSpacing([planarElementSpacing[0], e.target.value]))}
                   style={{ width: 60 }}
                 />
               </label>
@@ -835,9 +847,7 @@ function App() {
               <input 
                 type="text" 
                 value={planarNumElemRaw} 
-                onChange={e => {
-                  setPlanarNumElemRaw(e.target.value);
-                }} 
+                onChange={e => handlePlanarInputChange(() => setPlanarNumElemRaw(e.target.value))} 
                 placeholder="8, 16, 24"
                 style={{ width: '100%' }} 
               />
@@ -864,9 +874,7 @@ function App() {
               <input 
                 type="text" 
                 value={planarRadiusRaw} 
-                onChange={e => {
-                  setPlanarRadiusRaw(e.target.value);
-                }} 
+                onChange={e => handlePlanarInputChange(() => setPlanarRadiusRaw(e.target.value))} 
                 placeholder="0.5, 1.0, 1.5"
                 style={{ width: '100%' }} 
               />
@@ -887,7 +895,7 @@ function App() {
               type="number"
               step="any"
               value={planarScanAngle[0]}
-              onChange={e => setPlanarScanAngle([e.target.value, planarScanAngle[1]])}
+              onChange={e => handlePlanarInputChange(() => setPlanarScanAngle([e.target.value, planarScanAngle[1]]))}
               style={{ width: 60 }}
             />
           </label>
@@ -897,7 +905,7 @@ function App() {
               type="number"
               step="any"
               value={planarScanAngle[1]}
-              onChange={e => setPlanarScanAngle([planarScanAngle[0], e.target.value])}
+              onChange={e => handlePlanarInputChange(() => setPlanarScanAngle([planarScanAngle[0], e.target.value]))}
               style={{ width: 60 }}
             />
           </label>
@@ -906,7 +914,7 @@ function App() {
       
       <div style={{ marginBottom: 16 }}>
         <label>Plot Type:&nbsp;
-          <select value={planarPlotType} onChange={e => setPlanarPlotType(e.target.value)} style={{ width: 150 }}>
+          <select value={planarPlotType} onChange={e => handlePlanarInputChange(() => setPlanarPlotType(e.target.value))} style={{ width: 150 }}>
             <option value="pattern_cut">Pattern Cut</option>
             <option value="manifold">Array Manifold</option>
             <option value="polar3d">3D Polar</option>
@@ -922,7 +930,7 @@ function App() {
             <input 
               type="number" 
               value={planarCutAngle} 
-              onChange={e => setPlanarCutAngle(e.target.value)} 
+              onChange={e => handlePlanarInputChange(() => setPlanarCutAngle(e.target.value))} 
               style={{ width: 80 }} 
             />
           </label>
@@ -938,7 +946,7 @@ function App() {
               name="planarWindowType" 
               value="window" 
               checked={planarWindowType === 'window'} 
-              onChange={e => setPlanarWindowType(e.target.value)} 
+              onChange={e => handlePlanarInputChange(() => setPlanarWindowType(e.target.value))} 
               disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
             />
             &nbsp;Window Function
@@ -949,7 +957,7 @@ function App() {
               name="planarWindowType" 
               value="SLL" 
               checked={planarWindowType === 'SLL'} 
-              onChange={e => setPlanarWindowType(e.target.value)} 
+              onChange={e => handlePlanarInputChange(() => setPlanarWindowType(e.target.value))} 
               disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
             />
             &nbsp;Set SLL
@@ -959,7 +967,7 @@ function App() {
       {planarWindowType === 'window' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
           <label>Pre-defined Window :&nbsp;
-            <select value={planarWindow} onChange={e => setPlanarWindow(e.target.value)} style={{ width: 150 }} disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}>
+            <select value={planarWindow} onChange={e => handlePlanarInputChange(() => setPlanarWindow(e.target.value))} style={{ width: 150 }} disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}>
               <option value="">No Window</option>
               {windowOptions.map(option => (
                 <option key={option} value={option}>{option}</option>
@@ -976,7 +984,7 @@ function App() {
               min="13" 
               max="80" 
               value={planarSLL} 
-              onChange={e => setPlanarSLL(e.target.value)} 
+              onChange={e => handlePlanarInputChange(() => setPlanarSLL(e.target.value))} 
               style={{ width: 80 }} 
               disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
             />
@@ -986,25 +994,38 @@ function App() {
       
       <div style={{ marginBottom: 16 }}>
         <label>
-          <input type="checkbox" checked={planarElementPattern} onChange={e => setPlanarElementPattern(e.target.checked)} />
+          <input type="checkbox" checked={planarElementPattern} onChange={e => handlePlanarInputChange(() => setPlanarElementPattern(e.target.checked))} />
           &nbsp;Element Pattern (cosine)
         </label>
       </div>
       
-      <button type="submit" disabled={loading || (() => {
-        if (planarArrayType === 'rect' || planarArrayType === 'tri') {
-          const rows = parseInt(planarNumElem[0]);
-          const cols = parseInt(planarNumElem[1]);
-          if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0 && rows * cols > 5000) return true;
-        } else if (planarArrayType === 'circ') {
-          const parts = planarNumElemRaw.split(',').map(s => s.trim()).filter(s => s !== '');
-          const nums = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n > 0);
-          const total = nums.reduce((a, b) => a + b, 0);
-          if (total > 5000) return true;
-        }
-        return false;
-      })()} style={{ padding: '8px 20px', fontSize: 16, width: '100%' }}>
-        {loading ? 'Analyzing...' : 'Analyze Planar Array'}
+      <div style={{ margin: '16px 0 8px 0' }}>
+        <label style={{ fontWeight: 500 }}>
+          <input
+            type="checkbox"
+            checked={realtime}
+            onChange={e => setRealtime(e.target.checked)}
+            style={{ marginRight: 8 }}
+          />
+          Realtime
+        </label>
+      </div>
+      <button
+        type="submit"
+        disabled={realtime}
+        style={{
+          background: realtime ? '#ccc' : '#0074D9',
+          color: realtime ? '#888' : 'white',
+          cursor: realtime ? 'not-allowed' : 'pointer',
+          border: 'none',
+          borderRadius: 6,
+          padding: '10px 22px',
+          fontWeight: 600,
+          fontSize: 16,
+          marginTop: 8
+        }}
+      >
+        Analyze
       </button>
     </form>
   );
