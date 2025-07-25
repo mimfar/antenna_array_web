@@ -16,14 +16,30 @@ class Config:
     CORS_SUPPORTS_CREDENTIALS = False
     
     # API Configuration
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))  # 16MB default
     
     # Cache Configuration
     CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', 3600))  # 1 hour default
+    CACHE_MAX_SIZE = int(os.environ.get('CACHE_MAX_SIZE', 100))  # 100 items default
     
     # Security Configuration
     MAX_ELEMENTS = int(os.environ.get('MAX_ELEMENTS', 1000))  # Maximum array elements
     MAX_SPACING = float(os.environ.get('MAX_SPACING', 10.0))  # Maximum element spacing
+    
+    # Logging Configuration
+    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
+    LOG_FILE = os.environ.get('LOG_FILE', 'logs/app.log')
+    LOG_MAX_SIZE = int(os.environ.get('LOG_MAX_SIZE', 10240))  # 10KB default
+    LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', 10))
+    
+    # Server Configuration
+    HOST = os.environ.get('HOST', '0.0.0.0')
+    PORT = int(os.environ.get('PORT', 5000))
+    
+    # Rate Limiting Configuration
+    RATE_LIMIT_DEFAULT = os.environ.get('RATE_LIMIT_DEFAULT', '3600 per hour')
+    RATE_LIMIT_LINEAR = os.environ.get('RATE_LIMIT_LINEAR', '60 per minute')
+    RATE_LIMIT_PLANAR = os.environ.get('RATE_LIMIT_PLANAR', '60 per minute')
 
 class DevelopmentConfig(Config):
     """Development configuration"""

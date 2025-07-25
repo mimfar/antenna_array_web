@@ -48,19 +48,29 @@ app = Flask(
 
 # Apply configuration
 app.config.from_object(config)
+app.logger.info("Configuration loaded successfully")
+app.logger.info(f"Application starting in {config.ENV} mode")
 
+# Security: Limit request size to prevent DoS
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
+app.logger.info("Security configurations applied")
 
 # Security: Disable Flask's debug mode in production
 if app.config.get('ENV') == 'production':
     app.config['DEBUG'] = False
     app.config['TESTING'] = False
+    app.logger.info("Production mode enabled - debug and testing disabled")
 
 # Set up logging
 if not os.path.exists('logs'):
     os.mkdir('logs')
 
-file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
-file_handler.setLevel(logging.INFO)
+file_handler = RotatingFileHandler(
+    config.LOG_FILE, 
+    maxBytes=config.LOG_MAX_SIZE, 
+    backupCount=config.LOG_BACKUP_COUNT
+)
+file_handler.setLevel(getattr(logging, config.LOG_LEVEL))
 formatter = logging.Formatter(
     '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
 )
@@ -69,7 +79,7 @@ app.logger.addHandler(file_handler)
 
 # Add console logging for cloud deployment
 stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.INFO)
+stream_handler.setLevel(getattr(logging, config.LOG_LEVEL))
 stream_handler.setFormatter(formatter)
 app.logger.addHandler(stream_handler)
 
@@ -106,18 +116,24 @@ CORS(app,
      allow_headers=config.CORS_ALLOW_HEADERS,
      supports_credentials=config.CORS_SUPPORTS_CREDENTIALS)
 # Global storage for array instances to avoid recalculation
-
-ARRAY_CACHE_MAX_SIZE = 100
+ARRAY_CACHE_MAX_SIZE = config.CACHE_MAX_SIZE
 array_cache = OrderedDict()
 
 def cache_array(key, arr):
     # If key already exists, move it to the end (most recently used)
     if key in array_cache:
         array_cache.move_to_end(key)
+        app.logger.debug(f"Cache hit for key: {key[:20]}...")
+    else:
+        app.logger.debug(f"Cache miss for key: {key[:20]}...")
+    
     array_cache[key] = arr
     # If cache exceeds max size, remove the oldest item
     if len(array_cache) > ARRAY_CACHE_MAX_SIZE:
-        array_cache.popitem(last=False)  # Remove least recently used
+        evicted_key, _ = array_cache.popitem(last=False)  # Remove least recently used
+        app.logger.info(f"Cache eviction: removed key {evicted_key[:20]}... (cache size: {len(array_cache)})")
+    
+    app.logger.debug(f"Cache size: {len(array_cache)}/{ARRAY_CACHE_MAX_SIZE}")
 
 def get_array_key(array_type, array_params):
     """Generate a unique key for array caching"""
@@ -125,11 +141,115 @@ def get_array_key(array_type, array_params):
     param_str = json.dumps(array_params, sort_keys=True)
     return f"{array_type}_{hashlib.md5(param_str.encode()).hexdigest()}"
 
+def validate_array_parameters(array_type, num_elem, element_spacing, radius=None):
+    """Validate array parameters based on array type"""
+    if array_type in ['rect', 'tri']:
+        # Validate types for rectangular/triangular arrays
+        if not isinstance(num_elem, list) or len(num_elem) != 2:
+            return False, f"num_elem must be a list of two integers for {array_type} array"
+        
+        if not isinstance(element_spacing, list) or len(element_spacing) != 2:
+            return False, f"element_spacing must be a list of two numbers for {array_type} array"
+        
+        try:
+            num_elem = [int(num_elem[0]), int(num_elem[1])]
+            element_spacing = [float(element_spacing[0]), float(element_spacing[1])]
+        except (ValueError, TypeError):
+            return False, f"num_elem must be integers, element_spacing must be numbers for {array_type} array"
+        
+        return True, (num_elem, element_spacing)
+        
+    elif array_type == 'circ':
+        # Validate types for circular arrays
+        if not isinstance(num_elem, list) or len(num_elem) < 1:
+            return False, "num_elem must be a list of integers for circular array"
+        
+        if not isinstance(radius, list) or len(radius) != len(num_elem):
+            return False, "radius must be a list with same length as num_elem"
+        
+        try:
+            num_elem = [int(n) for n in num_elem]
+            radius = [float(r) for r in radius]
+        except (ValueError, TypeError):
+            return False, "num_elem must be integers, radius must be numbers for circular array"
+        
+        return True, (num_elem, radius)
+    
+    return False, f"Invalid array type: {array_type}"
+
+def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params, cut_angle=None):
+    """Create standardized response for different plot types"""
+    base_response = {
+        'manifold_x': manifold_x,
+        'manifold_y': manifold_y,
+        'gain': pattern_params.Gain,
+        'peak_angle': pattern_params.Peak_Angle,
+        'sll': pattern_params.SLL,
+        'hpbw': pattern_params.HPBW
+    }
+    
+    if plot_type == 'pattern_cut':
+        # 2D pattern cut
+        theta_deg, G = arr.pattern_cut(cut_angle)
+        G[G<-100] = -100
+        theta = theta_deg.tolist()
+        pattern = G.tolist()
+        
+        # Add y-axis limits
+        ymax = 5 * (int(max(pattern) / 5) + 1)
+        ymin = ymax - 40
+        
+        return {
+            **base_response,
+            'theta': theta,
+            'pattern': pattern,
+            'cut_angle': cut_angle,
+            'ymin': ymin,
+            'ymax': ymax
+        }
+        
+    elif plot_type == 'manifold':
+        return {
+            'manifold_x': manifold_x,
+            'manifold_y': manifold_y,
+            'array_type': 'rect'  # This should be passed as parameter
+        }
+        
+    elif plot_type == 'polar3d':
+        data = arr.get_3d_polar_data()
+        return {
+            **base_response,
+            'plot_type': '3d_polar',
+            'data': data
+        }
+        
+    elif plot_type in ['contour', 'polarsurf']:
+        # Generate plot image
+        if plot_type == 'contour':
+            fig, ax = arr.pattern_contour()
+        else:  # polarsurf
+            fig, ax = arr.polarsurf()
+        
+        img_base64 = generate_plot_image(fig)
+        return {
+            **base_response,
+            'plot': img_base64
+        }
+        
+    else:
+        # Fallback to image for unknown plot types
+        fig, ax = arr.plot_pattern(cut_angle=cut_angle)
+        img_base64 = generate_plot_image(fig)
+        return {
+            **base_response,
+            'plot': img_base64
+        }
+
 # Initialize Limiter
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["3600 per hour"],  # Global default, adjust as needed
+    default_limits=[config.RATE_LIMIT_DEFAULT],
 )
 
 @app.errorhandler(RateLimitExceeded)
@@ -141,7 +261,7 @@ def ratelimit_handler(e):
     }), 429
 
 @app.route('/api/linear-array/analyze', methods=['POST'])
-@limiter.limit("60 per minute")
+@limiter.limit(config.RATE_LIMIT_LINEAR)
 def analyze_linear_array():
     app.logger.info("/api/linear-array/analyze called")
     # Input validation
@@ -226,7 +346,7 @@ def analyze_linear_array():
     return jsonify(response)
 
 @app.route('/api/planar-array/analyze', methods=['POST'])
-@limiter.limit("60 per minute")
+@limiter.limit(config.RATE_LIMIT_PLANAR)
 def analyze_planar_array():
     app.logger.info("/api/planar-array/analyze called")
     # Input validation
@@ -265,45 +385,26 @@ def analyze_planar_array():
         num_elem = data.get('num_elem', [8, 8])
         element_spacing = data.get('element_spacing', [0.5, 0.5])
         
-        # Validate types for rectangular arrays
-        if not isinstance(num_elem, list) or len(num_elem) != 2:
-            app.logger.warning("Invalid num_elem format for rectangular array")
-            return jsonify({'error': 'num_elem must be a list of two integers'}), 400
+        # Use the validation function
+        is_valid, result = validate_array_parameters(array_type, num_elem, element_spacing)
+        if not is_valid:
+            app.logger.warning(f"Validation failed for {array_type} array: {result}")
+            return create_error_response(result)
         
-        if not isinstance(element_spacing, list) or len(element_spacing) != 2:
-            app.logger.warning("Invalid element_spacing format for rectangular array")
-            return jsonify({'error': 'element_spacing must be a list of two numbers'}), 400
-        
-        try:
-            num_elem = [int(num_elem[0]), int(num_elem[1])]
-            element_spacing = [float(element_spacing[0]), float(element_spacing[1])]
-        except (ValueError, TypeError):
-            app.logger.error("Invalid num_elem or element_spacing values for rectangular array")
-            return jsonify({'error': 'num_elem must be integers, element_spacing must be numbers'}), 400
-        
+        num_elem, element_spacing = result
         array_shape = [array_type, num_elem, element_spacing]
         
-
     elif array_type == 'circ':
         num_elem = data.get('num_elem', [8, 16, 24])
         radius = data.get('radius', [0.5, 1.0, 1.5])
         
-        # Validate types for circular arrays
-        if not isinstance(num_elem, list) or len(num_elem) < 1:
-            app.logger.warning("Invalid num_elem format for circular array")
-            return jsonify({'error': 'num_elem must be a list of integers'}), 400
+        # Use the validation function
+        is_valid, result = validate_array_parameters(array_type, num_elem, None, radius)
+        if not is_valid:
+            app.logger.warning(f"Validation failed for circular array: {result}")
+            return create_error_response(result)
         
-        if not isinstance(radius, list) or len(radius) != len(num_elem):
-            app.logger.warning("Invalid radius format for circular array")
-            return jsonify({'error': 'radius must be a list with same length as num_elem'}), 400
-        
-        try:
-            num_elem = [int(n) for n in num_elem]
-            radius = [float(r) for r in radius]
-        except (ValueError, TypeError):
-            app.logger.error("Invalid num_elem or radius values for circular array")
-            return jsonify({'error': 'num_elem must be integers, radius must be numbers'}), 400
-        
+        num_elem, radius = result
         array_shape = ['circ', num_elem, radius]
         
     elif array_type == 'other':
@@ -368,98 +469,9 @@ def analyze_planar_array():
    
     
     # Generate response based on plot type
-    if plot_type == 'pattern_cut':
-        # 2D pattern cut
-        theta_deg, G = arr.pattern_cut(cut_angle)
-        G[G<-100] = -100
-        theta = theta_deg.tolist()
-        pattern = G.tolist()
-           # Add y-axis limits
-        ymax = 5 * (int(max(pattern) / 5) + 1)
-        ymin = ymax - 40 
-    
-        
-        response = {
-            'theta': theta,
-            'pattern': pattern,
-            'manifold_x': manifold_x,
-            'manifold_y': manifold_y,
-            'gain': pattern_params.Gain,
-            'peak_angle': pattern_params.Peak_Angle,
-            'sll': pattern_params.SLL,
-            'hpbw': pattern_params.HPBW,
-            'cut_angle': cut_angle,
-            'ymin': ymin,
-            'ymax': ymax
-        }
-        app.logger.info(f"Planar array analysis successful for array_type={array_type}, scan_angle={scan_angle}")
-        return jsonify(response)
-        
-    elif plot_type == 'manifold':
- 
-        
-        response = {
-            'manifold_x': manifold_x,
-            'manifold_y': manifold_y,
-            'array_type': array_type
-        }
-        return jsonify(response)
-        
-    else:
-        # For 3D polar, return Plotly data; for others, return image
-        if plot_type == 'polar3d':
-            data = arr.get_3d_polar_data()
-            response = {
-                'plot_type': '3d_polar',
-                'data': data,
-                'manifold_x': manifold_x,
-                'manifold_y': manifold_y,
-                'gain': pattern_params.Gain,
-                'peak_angle': pattern_params.Peak_Angle,
-                'sll': pattern_params.SLL,
-                'hpbw': pattern_params.HPBW
-            }
-        elif plot_type == 'contour':
-            fig, ax = arr.pattern_contour()
-            img_base64 = generate_plot_image(fig)
-            plt.close(fig)
-            response = {
-                'plot': img_base64,
-                'manifold_x': manifold_x,
-                'manifold_y': manifold_y,
-                'gain': pattern_params.Gain,
-                'peak_angle': pattern_params.Peak_Angle,
-                'sll': pattern_params.SLL,
-                'hpbw': pattern_params.HPBW
-            }
-        elif plot_type == 'polarsurf':
-            fig, ax = arr.polarsurf()
-            img_base64 = generate_plot_image(fig)
-            plt.close(fig)
-            response = {
-                'plot': img_base64,
-                'manifold_x': manifold_x,
-                'manifold_y': manifold_y,
-                'gain': pattern_params.Gain,
-                'peak_angle': pattern_params.Peak_Angle,
-                'sll': pattern_params.SLL,
-                'hpbw': pattern_params.HPBW
-            }
-        else:
-            # Fallback to image for unknown plot types
-            fig, ax = arr.plot_pattern(cut_angle=cut_angle)
-            img_base64 = generate_plot_image(fig)
-            plt.close(fig)
-            response = {
-                'plot': img_base64,
-                'manifold_x': manifold_x,
-                'manifold_y': manifold_y,
-                'gain': pattern_params.Gain,
-                'peak_angle': pattern_params.Peak_Angle,
-                'sll': pattern_params.SLL,
-                'hpbw': pattern_params.HPBW
-            }
-        return jsonify(response)
+    response = create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params, cut_angle)
+    app.logger.info(f"Planar array analysis successful for array_type={array_type}, scan_angle={scan_angle}")
+    return jsonify(response)
 
 @app.after_request
 def add_security_headers(response):
@@ -472,8 +484,7 @@ def add_security_headers(response):
     return response
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(port=port, host='0.0.0.0')
+    app.run(port=config.PORT, host=config.HOST)
 
 
 

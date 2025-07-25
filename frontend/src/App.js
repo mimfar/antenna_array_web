@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Plot from 'react-plotly.js';
+import LinearArrayForm from './components/LinearArrayForm';
+import PlanarArrayForm from './components/PlanarArrayForm';
 
 /**
  * Main Antenna Array Analysis Tool Component
@@ -44,14 +46,14 @@ function App() {
   const validateLinearArrayInputs = (data) => {
     const errors = [];
     
-    const numElem = sanitizeInteger(data.num_elem, 1, 1000);
-    if (numElem === null) errors.push('num_elem must be an integer between 1 and 1000');
+    const num_elem = sanitizeInteger(data.num_elem, 1, 1000);
+    if (num_elem === null) errors.push('num_elem must be an integer between 1 and 1000');
     
-    const elementSpacing = sanitizeNumber(data.element_spacing, 0.1, 10.0);
-    if (elementSpacing === null) errors.push('element_spacing must be a number between 0.1 and 10.0');
+    const element_spacing = sanitizeNumber(data.element_spacing, 0.1, 10.0);
+    if (element_spacing === null) errors.push('element_spacing must be a number between 0.1 and 10.0');
     
-    const scanAngle = sanitizeNumber(data.scan_angle, -90, 90);
-    if (scanAngle === null) errors.push('scan_angle must be a number between -90 and 90');
+    const scan_angle = sanitizeNumber(data.scan_angle, -90, 90);
+    if (scan_angle === null) errors.push('scan_angle must be a number between -90 and 90');
     
     return { isValid: errors.length === 0, errors, sanitizedData: { ...data, num_elem, element_spacing, scan_angle } };
   };
@@ -63,8 +65,8 @@ function App() {
       errors.push('array_type must be rect, tri, or circ');
     }
     
-    const scanAngle = sanitizeArray(data.scan_angle, 2, 2);
-    if (scanAngle === null) errors.push('scan_angle must be an array of 2 numbers');
+    const scan_angle = sanitizeArray(data.scan_angle, 2, 2);
+    if (scan_angle === null) errors.push('scan_angle must be an array of 2 numbers');
     
     return { isValid: errors.length === 0, errors, sanitizedData: { ...data, scan_angle } };
   };
@@ -667,423 +669,9 @@ function App() {
    * Renders the linear array parameter input form
    * Includes all controls for array configuration and analysis options
    */
-  const renderLinearArrayForm = () => (
-    <form onSubmit={handleSubmit} style={{ background: '#f9f9f9', padding: 20, borderRadius: 8, position: 'sticky', top: 20 }}>
-      <div style={{ marginBottom: 16 }}>
-        <label>Number of Elements:&nbsp;
-          <input
-            type="number"
-            min="1"
-            max="2000"
-            value={numElem}
-            onChange={e => handleLinearInputChange(() => setNumElem(e.target.value))}
-            required
-            style={{ width: 80 }}
-          />
-        </label>
-        {numElemError && <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>{numElemError}</div>}
-      </div>
-      <div style={{ marginBottom: 16 }}>
-        <label>Element Spacing (λ):&nbsp;
-          <input
-            type="number"
-            step="0.1"
-            min="0.1"
-            value={elementSpacing}
-            onChange={e => handleLinearInputChange(() => setElementSpacing(e.target.value))}
-            required
-            style={{ width: 200 }}
-          />
-        </label>
-      </div>
-      <div style={{ marginBottom: 16 }}>
-        <label>Scan Angle (degs.):&nbsp;
-          <input
-            type="number"
-            step="any"
-            min="-90"
-            max="90"
-            value={scanAngle}
-            onChange={e => handleLinearInputChange(() => setScanAngle(e.target.value))}
-            required
-            style={{ width: 80 }}
-          />
-        </label>
-      </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', marginBottom: 8 }}>Amplitude Tapering:</label>
-        <div style={{ marginLeft: 20 }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>
-            <input 
-              type="radio" 
-              name="windowType" 
-              value="window" 
-              checked={windowType === 'window'} 
-              onChange={e => handleLinearInputChange(() => setWindowType(e.target.value))} 
-            />
-            &nbsp;Pre-defined Window 
-          </label>
-          <label style={{ display: 'block', marginBottom: 4 }}>
-            <input 
-              type="radio" 
-              name="windowType" 
-              value="SLL" 
-              checked={windowType === 'SLL'} 
-              onChange={e => handleLinearInputChange(() => setWindowType(e.target.value))} 
-            />
-            &nbsp;Set SLL
-          </label>
-        </div>
-      </div>
-      {windowType === 'window' && (
-        <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>Window Function:&nbsp;
-            <select value={window} onChange={e => handleLinearInputChange(() => setWindow(e.target.value))} style={{ width: 150 }}>
-              <option value="">No Window</option>
-              {windowOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-      {windowType === 'SLL' && (
-        <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>SLL (dB):&nbsp;
-            <input 
-              type="number" 
-              min="13" 
-              max="80" 
-              value={SLL} 
-              onChange={e => handleLinearInputChange(() => setSLL(e.target.value))} 
-              style={{ width: 80 }} 
-            />
-          </label>
-        </div>
-      )}
-      <div style={{ marginBottom: 16 }}>
-        <label>
-          <input type="checkbox" checked={elementPattern} onChange={e => handleLinearInputChange(() => setElementPattern(e.target.checked))} />
-          &nbsp;Element Pattern (cosine)
-        </label>
-        <div style={{ marginTop: 6, marginLeft: 24 }}>
-          <label>
-            Element Gain:&nbsp;
-            <input
-              type="number"
-              step="1"
-              value={elementGain}
-              onChange={e => handleLinearInputChange(() => setElementGain(e.target.value))}
-              disabled={!elementPattern}
-              style={{ width: 80 }}
-            />
-        </label>
-        </div>
-      </div>
-      <div style={{ margin: '16px 0 8px 0' }}>
-        <label style={{ fontWeight: 500 }}>
-          <input
-            type="checkbox"
-            checked={realtime}
-            onChange={e => setRealtime(e.target.checked)}
-            style={{ marginRight: 8 }}
-          />
-          Realtime
-        </label>
-      </div>
-      <button
-        type="submit"
-        disabled={realtime}
-        style={{
-          background: realtime ? '#ccc' : '#0074D9',
-          color: realtime ? '#888' : 'white',
-          cursor: realtime ? 'not-allowed' : 'pointer',
-          border: 'none',
-          borderRadius: 6,
-          padding: '10px 22px',
-          fontWeight: 600,
-          fontSize: 16,
-          marginTop: 8
-        }}
-      >
-        Analyze
-      </button>
-    </form>
-  );
 
-  const renderPlanarArrayForm = () => (
-    <form onSubmit={handleSubmit} style={{ background: '#f9f9f9', padding: 20, borderRadius: 8, position: 'sticky', top: 20 }}>
-      <div style={{ marginBottom: 16 }}>
-        <label>Array Type:&nbsp;
-          <select value={planarArrayType} onChange={e => handlePlanarInputChange(() => setPlanarArrayType(e.target.value))} style={{ width: 150 }}>
-            <option value="rect">Rectangular</option>
-            <option value="tri">Triangular</option>
-            <option value="circ">Circular</option>
-          </select>
-        </label>
-      </div>
-      
-      {(planarArrayType === 'rect' || planarArrayType === 'tri') && (
-        <>
-          <div style={{ marginBottom: 16 }}>
-            <label>Number of Elements:</label>
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-              <label style={{ fontSize: 12 }}>
-                Rows:&nbsp;
-                <input 
-                  type="number" 
-                  min="1"
-                  value={planarNumElem[0] || ''} 
-                  onChange={e => handlePlanarInputChange(() => setPlanarNumElem([e.target.value, planarNumElem[1] || '']))} 
-                  style={{ width: 60 }} 
-                />
-              </label>
-              <label style={{ fontSize: 12 }}>
-                Columns:&nbsp;
-                <input 
-                  type="number" 
-                  min="1"
-                  value={planarNumElem[1] || ''} 
-                  onChange={e => handlePlanarInputChange(() => setPlanarNumElem([planarNumElem[0] || '', e.target.value]))} 
-                  style={{ width: 60 }} 
-                />
-              </label>
-            </div>
-            {/* Warning and error for too many elements */}
-            {(() => {
-              const rows = parseInt(planarNumElem[0]);
-              const cols = parseInt(planarNumElem[1]);
-              if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
-                const total = rows * cols;
-                if (total > 5000) {
-                  return <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>Error: Total elements ({total}) exceeds the hard limit of 5000.</div>;
-                } else if (total > 2000) {
-                  return <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>Warning: Total elements ({total}) exceeds 2000. Computation may be slow.</div>;
-                }
-              }
-              return null;
-            })()}
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <label>Element Spacing:</label>
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-              <label style={{ fontSize: 12 }}>
-                Rows (λ):&nbsp;
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={planarElementSpacing[0]}
-                  onChange={e => handlePlanarInputChange(() => setPlanarElementSpacing([e.target.value, planarElementSpacing[1]]))}
-                  style={{ width: 60 }}
-                />
-              </label>
-              <label style={{ fontSize: 12 }}>
-                Columns (λ):&nbsp;
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={planarElementSpacing[1]}
-                  onChange={e => handlePlanarInputChange(() => setPlanarElementSpacing([planarElementSpacing[0], e.target.value]))}
-                  style={{ width: 60 }}
-                />
-              </label>
-            </div>
-          </div>
-        </>
-      )}
-      
-      {planarArrayType === 'circ' && (
-        <>
-          <div style={{ marginBottom: 16 }}>
-            <label>Number of Elements per ring:</label>
-            <div style={{ marginTop: 4 }}>
-              <input 
-                type="text" 
-                value={planarNumElemRaw} 
-                onChange={e => handlePlanarInputChange(() => setPlanarNumElemRaw(e.target.value))} 
-                placeholder="8, 16, 24"
-                style={{ width: '100%' }} 
-              />
-              <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
-                Enter comma-separated positive integers (e.g., "8, 16, 24" for 3 rings)
-              </div>
-              {/* Warning and error for too many elements in circular array */}
-              {(() => {
-                const parts = planarNumElemRaw.split(',').map(s => s.trim()).filter(s => s !== '');
-                const nums = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n > 0);
-                const total = nums.reduce((a, b) => a + b, 0);
-                if (total > 5000) {
-                  return <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>Error: Total elements ({total}) exceeds the hard limit of 5000.</div>;
-                } else if (total > 2000) {
-                  return <div style={{ color: 'red', fontSize: 12, marginTop: 4 }}>Warning: Total elements ({total}) exceeds 2000. Computation may be slow.</div>;
-                }
-                return null;
-              })()}
-            </div>
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <label>Ring Radii:</label>
-            <div style={{ marginTop: 4 }}>
-              <input 
-                type="text" 
-                value={planarRadiusRaw} 
-                onChange={e => handlePlanarInputChange(() => setPlanarRadiusRaw(e.target.value))} 
-                placeholder="0.5, 1.0, 1.5"
-                style={{ width: '100%' }} 
-              />
-              <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
-                Enter comma-separated positive numbers in wavelengths (e.g., "0.5, 1.0, 1.5")
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-      
-      <div style={{ marginBottom: 16 }}>
-        <label>Scan Angle:</label>
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <label style={{ fontSize: 12 }}>
-            Theta (deg):&nbsp;
-            <input
-              type="number"
-              step="any"
-              value={planarScanAngle[0]}
-              onChange={e => handlePlanarInputChange(() => setPlanarScanAngle([e.target.value, planarScanAngle[1]]))}
-              style={{ width: 60 }}
-            />
-          </label>
-          <label style={{ fontSize: 12 }}>
-            Phi (deg):&nbsp;
-            <input
-              type="number"
-              step="any"
-              value={planarScanAngle[1]}
-              onChange={e => handlePlanarInputChange(() => setPlanarScanAngle([planarScanAngle[0], e.target.value]))}
-              style={{ width: 60 }}
-            />
-          </label>
-        </div>
-      </div>
-      
-      <div style={{ marginBottom: 16 }}>
-        <label>Plot Type:&nbsp;
-          <select value={planarPlotType} onChange={e => handlePlanarInputChange(() => setPlanarPlotType(e.target.value))} style={{ width: 150 }}>
-            <option value="pattern_cut">Pattern Cut</option>
-            <option value="manifold">Array Manifold</option>
-            <option value="polar3d">3D Polar</option>
-            {/* <option value="contour">Contour Plot</option> */}
-            <option value="polarsurf">Polar Surface</option>
-          </select>
-        </label>
-      </div>
-      
-      {planarPlotType === 'pattern_cut' && (
-        <div style={{ marginBottom: 16 }}>
-          <label>Cut Angle (phi):&nbsp;
-            <input 
-              type="number" 
-              value={planarCutAngle} 
-              onChange={e => handlePlanarInputChange(() => setPlanarCutAngle(e.target.value))} 
-              style={{ width: 80 }} 
-            />
-          </label>
-        </div>
-      )}
-      
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', marginBottom: 8 }}>Amplitude Tapering:</label>
-        <div style={{ marginLeft: 20 }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>
-            <input 
-              type="radio" 
-              name="planarWindowType" 
-              value="window" 
-              checked={planarWindowType === 'window'} 
-              onChange={e => handlePlanarInputChange(() => setPlanarWindowType(e.target.value))} 
-              disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
-            />
-            &nbsp;Window Function
-          </label>
-          <label style={{ display: 'block', marginBottom: 4 }}>
-            <input 
-              type="radio" 
-              name="planarWindowType" 
-              value="SLL" 
-              checked={planarWindowType === 'SLL'} 
-              onChange={e => handlePlanarInputChange(() => setPlanarWindowType(e.target.value))} 
-              disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
-            />
-            &nbsp;Set SLL
-          </label>
-        </div>
-      </div>
-      {planarWindowType === 'window' && (
-        <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>Pre-defined Window :&nbsp;
-            <select value={planarWindow} onChange={e => handlePlanarInputChange(() => setPlanarWindow(e.target.value))} style={{ width: 150 }} disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}>
-              <option value="">No Window</option>
-              {windowOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-      {planarWindowType === 'SLL' && (
-        <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>SLL (dB):&nbsp;
-            <input 
-              type="number" 
-              min="13" 
-              max="80" 
-              value={planarSLL} 
-              onChange={e => handlePlanarInputChange(() => setPlanarSLL(e.target.value))} 
-              style={{ width: 80 }} 
-              disabled={planarArrayType === 'tri' || planarArrayType === 'circ'}
-            />
-          </label>
-        </div>
-      )}
-      
-      <div style={{ marginBottom: 16 }}>
-        <label>
-          <input type="checkbox" checked={planarElementPattern} onChange={e => handlePlanarInputChange(() => setPlanarElementPattern(e.target.checked))} />
-          &nbsp;Element Pattern (cosine)
-        </label>
-      </div>
-      
-      <div style={{ margin: '16px 0 8px 0' }}>
-        <label style={{ fontWeight: 500 }}>
-          <input
-            type="checkbox"
-            checked={realtime}
-            onChange={e => setRealtime(e.target.checked)}
-            style={{ marginRight: 8 }}
-          />
-          Realtime
-        </label>
-      </div>
-      <button
-        type="submit"
-        disabled={realtime}
-        style={{
-          background: realtime ? '#ccc' : '#0074D9',
-          color: realtime ? '#888' : 'white',
-          cursor: realtime ? 'not-allowed' : 'pointer',
-          border: 'none',
-          borderRadius: 6,
-          padding: '10px 22px',
-          fontWeight: 600,
-          fontSize: 16,
-          marginTop: 8
-        }}
-      >
-        Analyze
-      </button>
-    </form>
-  );
+
+
 
   /**
    * Renders the linear array analysis results
@@ -2241,7 +1829,69 @@ function App() {
       <div style={{ display: 'flex', gap: 32 }}>
         {/* Left side - Form */}
         <div style={{ flex: '0 0 350px' }}>
-          {activeTab === 'linear' ? renderLinearArrayForm() : renderPlanarArrayForm()}
+          {activeTab === 'linear' ? (
+            <LinearArrayForm
+              numElem={numElem}
+              setNumElem={setNumElem}
+              elementSpacing={elementSpacing}
+              setElementSpacing={setElementSpacing}
+              scanAngle={scanAngle}
+              setScanAngle={setScanAngle}
+              elementPattern={elementPattern}
+              setElementPattern={setElementPattern}
+              elementGain={elementGain}
+              setElementGain={setElementGain}
+              plotType={plotType}
+              setPlotType={setPlotType}
+              window={window}
+              setWindow={setWindow}
+              SLL={SLL}
+              setSLL={setSLL}
+              windowType={windowType}
+              setWindowType={setWindowType}
+              realtime={realtime}
+              setRealtime={setRealtime}
+              handleLinearInputChange={handleLinearInputChange}
+              handleSubmit={handleSubmit}
+              loading={loading}
+              windowOptions={windowOptions}
+            />
+          ) : (
+            <PlanarArrayForm
+              arrayType={planarArrayType}
+              setArrayType={setPlanarArrayType}
+              scanAngle={planarScanAngle}
+              setScanAngle={setPlanarScanAngle}
+              numElem={planarNumElem}
+              setNumElem={setPlanarNumElem}
+              elementSpacing={planarElementSpacing}
+              setElementSpacing={setPlanarElementSpacing}
+              radius={planarRadiusRaw}
+              setRadius={setPlanarRadiusRaw}
+              plotType={planarPlotType}
+              setPlotType={setPlanarPlotType}
+              cutAngle={planarCutAngle}
+              setCutAngle={setPlanarCutAngle}
+              realtime={realtime}
+              setRealtime={setRealtime}
+              handlePlanarInputChange={handlePlanarInputChange}
+              handlePlanarSubmit={handleSubmit}
+              loading={loading}
+              windowType={planarWindowType}
+              setWindowType={setPlanarWindowType}
+              window={planarWindow}
+              setWindow={setPlanarWindow}
+              windowOptions={windowOptions}
+              SLL={planarSLL}
+              setSLL={setPlanarSLL}
+              elementPattern={planarElementPattern}
+              setElementPattern={setPlanarElementPattern}
+              numElemRaw={planarNumElemRaw}
+              setNumElemRaw={setPlanarNumElemRaw}
+              radiusRaw={planarRadiusRaw}
+              setRadiusRaw={setPlanarRadiusRaw}
+            />
+          )}
         </div>
 
         {/* Right side - Results and legend table */}
