@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, make_response
 from flask_cors import CORS
 import random
 import io
@@ -18,8 +18,23 @@ from flask_limiter.errors import RateLimitExceeded
 import logging
 from logging.handlers import RotatingFileHandler
 
- 
-      
+def generate_plot_image(fig):
+    """Generate base64 image from matplotlib figure"""
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close(fig)
+    return img_base64
+
+def create_error_response(message, status_code=400, error_type="validation_error"):
+    """Create standardized error response"""
+    return jsonify({
+        'error': error_type,
+        'message': message,
+        'status_code': status_code
+    }), status_code
+
 
 # Load configuration
 config = get_config()
@@ -30,8 +45,15 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build', 'static'),
     static_url_path='/static'
 )
+
 # Apply configuration
 app.config.from_object(config)
+
+
+# Security: Disable Flask's debug mode in production
+if app.config.get('ENV') == 'production':
+    app.config['DEBUG'] = False
+    app.config['TESTING'] = False
 
 # Set up logging
 if not os.path.exists('logs'):
@@ -126,20 +148,32 @@ def analyze_linear_array():
     data = request.get_json()
     if not data:
         app.logger.warning("No JSON data received in linear array analysis request")
-        return jsonify({'error': 'Invalid JSON data'}), 400
+        return create_error_response('Invalid JSON data')
     
     # Validate required fields
     num_elem = data.get('num_elem')
     element_spacing = data.get('element_spacing')
     
+    if num_elem is None or element_spacing is None:
+        app.logger.warning("Missing required fields in linear array request")
+        return create_error_response('num_elem and element_spacing are required')
+        
+    # Validate and convert types first
+    try:
+        num_elem = int(num_elem)
+        element_spacing = float(element_spacing)
+    except (ValueError, TypeError):
+        app.logger.error("Invalid type for num_elem or element_spacing")
+        return create_error_response('num_elem must be integer, element_spacing must be number')
+
     # Security checks
     if num_elem <= 0 or num_elem > config.MAX_ELEMENTS:
         app.logger.warning(f"num_elem out of allowed range: {num_elem}")
-        return jsonify({'error': f'num_elem must be between 1 and {config.MAX_ELEMENTS}'}), 400
+        return create_error_response(f'num_elem must be between 1 and {config.MAX_ELEMENTS}')
     
     if element_spacing <= 0 or element_spacing > config.MAX_SPACING:
         app.logger.warning(f"element_spacing out of allowed range: {element_spacing}")
-        return jsonify({'error': f'element_spacing must be between 0 and {config.MAX_SPACING}'}), 400
+        return create_error_response(f'element_spacing must be between 0 and {config.MAX_SPACING}')
     
     # Get other parameters with defaults
     scan_angle = data.get('scan_angle', 0)
@@ -207,7 +241,11 @@ def analyze_planar_array():
         app.logger.warning(f"Invalid array_type: {array_type}")
         return jsonify({'error': 'array_type must be rect, tri, or circ'}), 400
     
+    # Validate scan_angle
     scan_angle = data.get('scan_angle', [0, 0])
+    if not isinstance(scan_angle, list) or len(scan_angle) != 2:
+        app.logger.warning("Invalid scan_angle format")
+        return jsonify({'error': 'scan_angle must be a list of two numbers'}), 400
     
     try:
         scan_angle = [float(scan_angle[0]), float(scan_angle[1])]
@@ -223,18 +261,51 @@ def analyze_planar_array():
     cut_angle = data.get('cut_angle', scan_angle[1])
     
     # Build array_shape based on array type
-    if array_type == 'rect':
+    if array_type in ['rect','tri']:
         num_elem = data.get('num_elem', [8, 8])
         element_spacing = data.get('element_spacing', [0.5, 0.5])
-        array_shape = ['rect', num_elem, element_spacing]
-    elif array_type == 'tri':
-        num_elem = data.get('num_elem', [8, 8])
-        element_spacing = data.get('element_spacing', [0.5, 0.5])
-        array_shape = ['tri', num_elem, element_spacing]
+        
+        # Validate types for rectangular arrays
+        if not isinstance(num_elem, list) or len(num_elem) != 2:
+            app.logger.warning("Invalid num_elem format for rectangular array")
+            return jsonify({'error': 'num_elem must be a list of two integers'}), 400
+        
+        if not isinstance(element_spacing, list) or len(element_spacing) != 2:
+            app.logger.warning("Invalid element_spacing format for rectangular array")
+            return jsonify({'error': 'element_spacing must be a list of two numbers'}), 400
+        
+        try:
+            num_elem = [int(num_elem[0]), int(num_elem[1])]
+            element_spacing = [float(element_spacing[0]), float(element_spacing[1])]
+        except (ValueError, TypeError):
+            app.logger.error("Invalid num_elem or element_spacing values for rectangular array")
+            return jsonify({'error': 'num_elem must be integers, element_spacing must be numbers'}), 400
+        
+        array_shape = [array_type, num_elem, element_spacing]
+        
+
     elif array_type == 'circ':
         num_elem = data.get('num_elem', [8, 16, 24])
         radius = data.get('radius', [0.5, 1.0, 1.5])
+        
+        # Validate types for circular arrays
+        if not isinstance(num_elem, list) or len(num_elem) < 1:
+            app.logger.warning("Invalid num_elem format for circular array")
+            return jsonify({'error': 'num_elem must be a list of integers'}), 400
+        
+        if not isinstance(radius, list) or len(radius) != len(num_elem):
+            app.logger.warning("Invalid radius format for circular array")
+            return jsonify({'error': 'radius must be a list with same length as num_elem'}), 400
+        
+        try:
+            num_elem = [int(n) for n in num_elem]
+            radius = [float(r) for r in radius]
+        except (ValueError, TypeError):
+            app.logger.error("Invalid num_elem or radius values for circular array")
+            return jsonify({'error': 'num_elem must be integers, radius must be numbers'}), 400
+        
         array_shape = ['circ', num_elem, radius]
+        
     elif array_type == 'other':
         # For custom arrays, we'd need X, Y coordinates
         # This is a placeholder - would need more complex handling
@@ -350,10 +421,7 @@ def analyze_planar_array():
             }
         elif plot_type == 'contour':
             fig, ax = arr.pattern_contour()
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+            img_base64 = generate_plot_image(fig)
             plt.close(fig)
             response = {
                 'plot': img_base64,
@@ -366,10 +434,7 @@ def analyze_planar_array():
             }
         elif plot_type == 'polarsurf':
             fig, ax = arr.polarsurf()
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+            img_base64 = generate_plot_image(fig)
             plt.close(fig)
             response = {
                 'plot': img_base64,
@@ -383,10 +448,7 @@ def analyze_planar_array():
         else:
             # Fallback to image for unknown plot types
             fig, ax = arr.plot_pattern(cut_angle=cut_angle)
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-            buf.seek(0)
-            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+            img_base64 = generate_plot_image(fig)
             plt.close(fig)
             response = {
                 'plot': img_base64,
@@ -399,9 +461,19 @@ def analyze_planar_array():
             }
         return jsonify(response)
 
-if __name__ == '__main__':
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.plot.ly; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://forms.gle;"
+    return response
 
-    app.run(port=5001)
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(port=port, host='0.0.0.0')
 
 
 

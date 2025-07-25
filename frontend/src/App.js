@@ -15,6 +15,61 @@ import Plot from 'react-plotly.js';
  */
 function App() {
   // ============================================================================
+  // INPUT VALIDATION & SANITIZATION UTILITIES
+  // ============================================================================
+  
+  const sanitizeNumber = (value, min = null, max = null) => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return null;
+    if (min !== null && num < min) return null;
+    if (max !== null && num > max) return null;
+    return num;
+  };
+  
+  const sanitizeInteger = (value, min = null, max = null) => {
+    const num = parseInt(value);
+    if (isNaN(num) || !Number.isInteger(num)) return null;
+    if (min !== null && num < min) return null;
+    if (max !== null && num > max) return null;
+    return num;
+  };
+  
+  const sanitizeArray = (value, minLength = 1, maxLength = null) => {
+    if (!Array.isArray(value)) return null;
+    if (value.length < minLength) return null;
+    if (maxLength !== null && value.length > maxLength) return null;
+    return value;
+  };
+  
+  const validateLinearArrayInputs = (data) => {
+    const errors = [];
+    
+    const numElem = sanitizeInteger(data.num_elem, 1, 1000);
+    if (numElem === null) errors.push('num_elem must be an integer between 1 and 1000');
+    
+    const elementSpacing = sanitizeNumber(data.element_spacing, 0.1, 10.0);
+    if (elementSpacing === null) errors.push('element_spacing must be a number between 0.1 and 10.0');
+    
+    const scanAngle = sanitizeNumber(data.scan_angle, -90, 90);
+    if (scanAngle === null) errors.push('scan_angle must be a number between -90 and 90');
+    
+    return { isValid: errors.length === 0, errors, sanitizedData: { ...data, num_elem, element_spacing, scan_angle } };
+  };
+  
+  const validatePlanarArrayInputs = (data) => {
+    const errors = [];
+    
+    if (!['rect', 'tri', 'circ'].includes(data.array_type)) {
+      errors.push('array_type must be rect, tri, or circ');
+    }
+    
+    const scanAngle = sanitizeArray(data.scan_angle, 2, 2);
+    if (scanAngle === null) errors.push('scan_angle must be an array of 2 numbers');
+    
+    return { isValid: errors.length === 0, errors, sanitizedData: { ...data, scan_angle } };
+  };
+
+  // ============================================================================
   // STATE MANAGEMENT
   // ============================================================================
   
