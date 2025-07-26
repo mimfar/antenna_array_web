@@ -176,46 +176,47 @@ function App() {
     setError('');
     setResult(null);
     
-    // Input validation
-    let spacing = elementSpacing;
-    if (spacing === '' || isNaN(parseFloat(spacing))) {
-      setError('Element spacing must be a valid number.');
-      setLoading(false);
-      return;
-    }
-    spacing = parseFloat(spacing);
-    
-    if (scanAngle === '' || isNaN(parseFloat(scanAngle))) {
-      setError('Scan angle must be a valid number.');
-      setLoading(false);
-      return;
-    }
-    const validatedScanAngle = parseFloat(scanAngle);
-    
     try {
+      // Validate inputs
+      const validation = validateLinearArrayInputs({
+        num_elem: numElem,
+        element_spacing: elementSpacing,
+        scan_angle: scanAngle
+      });
+      
+      if (!validation.isValid) {
+        setError(`Please fix the following issues:\n${validation.errors.join('\n')}`);
+      setLoading(false);
+      return;
+    }
+    
       const API_URL = process.env.REACT_APP_API_URL || '';
+
       const response = await fetch(`${API_URL}/api/linear-array/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          num_elem: Number(numElem),
-          element_spacing: spacing,
-          scan_angle: validatedScanAngle,
+          num_elem: validation.sanitizedData.num_elem,
+          element_spacing: validation.sanitizedData.element_spacing,
+          scan_angle: validation.sanitizedData.scan_angle,
           element_pattern: Boolean(elementPattern),
           element_gain: Number(elementGain),
-          annotate: Boolean(annotate), // Keep for backward compatibility, but backend ignores this now
-          plot_type: plotType,
           window: windowType === 'window' ? (window || null) : null,
           SLL: windowType === 'SLL' ? Number(SLL) : null,
-          show_manifold: true // Always request manifold data
+          plot_type: plotType
         })
       });
       
-      if (!response.ok) throw new Error('Server error');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
       const data = await response.json();
       setResult(data);
     } catch (err) {
-      setError('Failed to analyze linear array. Please check your input and try again.');
+      console.error('Linear array analysis error:', err);
+      setError(err.message || 'Failed to analyze linear array. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -319,12 +320,17 @@ function App() {
           cut_angle: Number(planarCutAngle)
         })
       });
-      if (!response.ok) throw new Error('Server error');
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
       const data = await response.json();
       setResult(data);
     } catch (err) {
       console.error('Planar array analysis error:', err);
-      setError('Failed to analyze planar array. Please check your input and try again.');
+      setError(err.message || 'Failed to analyze planar array. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -1787,48 +1793,97 @@ function App() {
   // ============================================================================
 
   return (
-    <div style={{ maxWidth: 1200, margin: '40px auto', fontFamily: 'sans-serif', padding: 24 }}>
-      <h1>Antenna Array Analysis Tool</h1>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: '#f8f9fa',
+      padding: '20px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      {/* Header */}
+      <div style={{ 
+        textAlign: 'center', 
+        marginBottom: 32,
+        color: '#333'
+      }}>
+        <h1 style={{ 
+          fontSize: 'clamp(2rem, 5vw, 3rem)', 
+          margin: 0, 
+          fontWeight: 700
+        }}>
+          Antenna Array Analysis Tool
+        </h1>
+        <p style={{ 
+          fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', 
+          margin: '8px 0 0 0', 
+          opacity: 0.7,
+          maxWidth: '600px',
+          marginLeft: 'auto',
+          marginRight: 'auto'
+        }}>
+          Analyze linear and planar antenna arrays with real-time visualization
+        </p>
+      </div>
       
       {/* Tab Navigation */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', borderBottom: '2px solid #eee' }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        marginBottom: 24,
+        gap: 8
+      }}>
           <button
             onClick={() => setActiveTab('linear')}
             style={{
-              padding: '12px 24px',
-              fontSize: 16,
-              background: activeTab === 'linear' ? '#0074D9' : '#f5f5f5',
-              color: activeTab === 'linear' ? 'white' : 'black',
+            background: activeTab === 'linear' ? '#0074D9' : '#e9ecef',
+            color: activeTab === 'linear' ? 'white' : '#495057',
               border: 'none',
+            borderRadius: 8,
+            padding: '12px 24px',
+            fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+            fontWeight: 600,
               cursor: 'pointer',
-              borderRadius: '8px 8px 0 0',
-              marginRight: 4
+            transition: 'all 0.2s',
+            minWidth: '120px'
             }}
+          onMouseOver={e => e.currentTarget.style.background = activeTab === 'linear' ? '#005fa3' : '#dee2e6'}
+          onMouseOut={e => e.currentTarget.style.background = activeTab === 'linear' ? '#0074D9' : '#e9ecef'}
           >
             Linear Array
           </button>
           <button
             onClick={() => setActiveTab('planar')}
             style={{
-              padding: '12px 24px',
-              fontSize: 16,
-              background: activeTab === 'planar' ? '#0074D9' : '#f5f5f5',
-              color: activeTab === 'planar' ? 'white' : 'black',
+            background: activeTab === 'planar' ? '#0074D9' : '#e9ecef',
+            color: activeTab === 'planar' ? 'white' : '#495057',
               border: 'none',
+            borderRadius: 8,
+            padding: '12px 24px',
+            fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+            fontWeight: 600,
               cursor: 'pointer',
-              borderRadius: '8px 8px 0 0',
-              marginLeft: 4
+            transition: 'all 0.2s',
+            minWidth: '120px'
             }}
+          onMouseOver={e => e.currentTarget.style.background = activeTab === 'planar' ? '#005fa3' : '#dee2e6'}
+          onMouseOut={e => e.currentTarget.style.background = activeTab === 'planar' ? '#0074D9' : '#e9ecef'}
           >
             Planar Array
           </button>
-        </div>
       </div>
       
-      <div style={{ display: 'flex', gap: 32 }}>
+      {/* Main Content */}
+      <div style={{ 
+        display: 'flex', 
+        gap: 24,
+        maxWidth: '1400px',
+        margin: '0 auto',
+        flexDirection: window.innerWidth <= 768 ? 'column' : 'row'
+      }}>
         {/* Left side - Form */}
-        <div style={{ flex: '0 0 350px' }}>
+        <div style={{ 
+          flex: window.innerWidth <= 768 ? 'none' : '0 0 350px',
+          width: window.innerWidth <= 768 ? '100%' : 'auto'
+        }}>
           {activeTab === 'linear' ? (
             <LinearArrayForm
               numElem={numElem}
@@ -1895,18 +1950,37 @@ function App() {
         </div>
 
         {/* Right side - Results and legend table */}
-        <div style={{ flex: 1, display: 'flex', gap: 24 }}>
+        <div style={{ 
+          flex: 1, 
+          display: 'flex', 
+          gap: 24,
+          flexDirection: window.innerWidth <= 768 ? 'column' : 'row'
+        }}>
         <div style={{ flex: 1 }}>
-          {error && <div style={{ color: 'red', marginBottom: 16 }}>{error}</div>}
+            {error && (
+              <div style={{ 
+                color: '#d32f2f', 
+                marginBottom: 16, 
+                padding: 12, 
+                background: '#ffebee', 
+                borderRadius: 8, 
+                border: '1px solid #ffcdd2',
+                fontSize: 'clamp(0.9rem, 2vw, 1rem)'
+              }}>
+                <strong>Error:</strong> {error}
+              </div>
+            )}
           {result && (activeTab === 'linear' ? renderLinearArrayResults() : renderPlanarArrayResults())}
           </div>
         </div>
       </div>
 
+      {/* Feedback Button */}
       <div style={{
-        position: 'absolute',
-        top: 24,
-        right: 32,
+        position: 'fixed',
+        top: window.innerWidth <= 768 ? 'auto' : 24,
+        bottom: window.innerWidth <= 768 ? 24 : 'auto',
+        right: window.innerWidth <= 768 ? 24 : 32,
         zIndex: 1000
       }}>
         <a
@@ -1915,14 +1989,14 @@ function App() {
           rel="noopener noreferrer"
           style={{
             display: 'inline-block',
-            padding: '10px 22px',
+            padding: 'clamp(8px, 2vw, 10px) clamp(16px, 3vw, 22px)',
             background: '#0074D9',
             color: 'white',
             borderRadius: '6px',
             fontWeight: 600,
             textDecoration: 'none',
             boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-            fontSize: 16,
+            fontSize: 'clamp(14px, 2.5vw, 16px)',
             letterSpacing: 0.5,
             transition: 'background 0.2s',
           }}

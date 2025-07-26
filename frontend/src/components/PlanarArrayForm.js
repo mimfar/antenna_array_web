@@ -35,13 +35,37 @@ const PlanarArrayForm = ({
   radiusRaw,
   setRadiusRaw
 }) => {
+  // Calculate total elements for validation hints
+  const getTotalElements = () => {
+    if (arrayType === 'rect' || arrayType === 'tri') {
+      return numElem[0] * numElem[1];
+    } else if (arrayType === 'circ') {
+      try {
+        const elements = numElemRaw.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+        return elements.reduce((sum, n) => sum + n, 0);
+      } catch {
+        return 0;
+      }
+    }
+    return 0;
+  };
+
+  const totalElements = getTotalElements();
+  const maxElements = 1000; // Should match backend config
+  const maxSpacing = 10.0; // Should match backend config
   return (
-    <form onSubmit={handlePlanarSubmit}>
-      <h2>Planar Array Analysis</h2>
+    <form onSubmit={handlePlanarSubmit} aria-labelledby="planar-array-title">
+      <h2 id="planar-array-title">Planar Array Analysis</h2>
       
       <div style={{ marginBottom: 16 }}>
-        <label>Array Type:&nbsp;
-          <select value={arrayType} onChange={e => handlePlanarInputChange(() => setArrayType(e.target.value))} style={{ width: 150 }}>
+        <label htmlFor="array-type">
+          Array Type:
+          <select 
+            id="array-type"
+            value={arrayType} 
+            onChange={e => handlePlanarInputChange(() => setArrayType(e.target.value))} 
+            style={{ width: 150, marginLeft: 8 }}
+          >
             <option value="rect">Rectangular</option>
             <option value="tri">Triangular</option>
             <option value="circ">Circular</option>
@@ -50,77 +74,130 @@ const PlanarArrayForm = ({
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label>Scan Angle:</label>
+        <label htmlFor="scan-angle-theta">
+          Scan Angle:
+        </label>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <label style={{ fontSize: 12 }}>
-            Theta (deg):&nbsp;
+            Theta (deg):
             <input
+              id="scan-angle-theta"
               type="number"
               step="any"
               value={scanAngle[0]}
               onChange={e => handlePlanarInputChange(() => setScanAngle([e.target.value, scanAngle[1]]))}
-              style={{ width: 60 }}
+              style={{ width: 60, marginLeft: 4 }}
+              aria-describedby="scan-angle-help"
             />
           </label>
           <label style={{ fontSize: 12 }}>
-            Phi (deg):&nbsp;
+            Phi (deg):
             <input
+              id="scan-angle-phi"
               type="number"
               step="any"
               value={scanAngle[1]}
               onChange={e => handlePlanarInputChange(() => setScanAngle([scanAngle[0], e.target.value]))}
-              style={{ width: 60 }}
+              style={{ width: 60, marginLeft: 4 }}
+              aria-describedby="scan-angle-help"
             />
           </label>
+        </div>
+        <div id="scan-angle-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Theta: elevation angle, Phi: azimuth angle
         </div>
       </div>
 
       {arrayType === 'rect' && (
         <>
           <div style={{ marginBottom: 16 }}>
-            <label>Number of Elements (X, Y):&nbsp;
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={numElem[0]}
-                onChange={e => handlePlanarInputChange(() => setNumElem([e.target.value, numElem[1]]))}
-                required
-                style={{ width: 60, marginRight: 8 }}
-              />
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={numElem[1]}
-                onChange={e => handlePlanarInputChange(() => setNumElem([numElem[0], e.target.value]))}
-                required
-                style={{ width: 60 }}
-              />
+            <label htmlFor="num-elem-rows">
+              Number of Elements:
             </label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <label style={{ fontSize: 12 }}>
+                Rows:
+                <input
+                  id="num-elem-rows"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={numElem[0]}
+                  onChange={e => handlePlanarInputChange(() => setNumElem([e.target.value, numElem[1]]))}
+                  required
+                  style={{ width: 60, marginLeft: 4 }}
+                  aria-describedby="num-elem-help"
+                />
+              </label>
+              <label style={{ fontSize: 12 }}>
+                Columns:
+                <input
+                  id="num-elem-cols"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={numElem[1]}
+                  onChange={e => handlePlanarInputChange(() => setNumElem([numElem[0], e.target.value]))}
+                  required
+                  style={{ width: 60, marginLeft: 4 }}
+                  aria-describedby="num-elem-help"
+                />
+              </label>
+            </div>
+            <div id="num-elem-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+              Total elements: {totalElements} (max: {maxElements})
+              {totalElements > maxElements && (
+                <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>
+                  {' '}⚠️ Exceeds limit
+                </span>
+              )}
+            </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label>Element Spacing (λ) (X, Y):&nbsp;
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={elementSpacing[0]}
-                onChange={e => handlePlanarInputChange(() => setElementSpacing([e.target.value, elementSpacing[1]]))}
-                required
-                style={{ width: 60, marginRight: 8 }}
-              />
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={elementSpacing[1]}
-                onChange={e => handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], e.target.value]))}
-                required
-                style={{ width: 60 }}
-              />
+            <label htmlFor="element-spacing-rows">
+              Element Spacing:
             </label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <label style={{ fontSize: 12 }}>
+                Rows (λ):
+                <input
+                  id="element-spacing-rows"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max={maxSpacing}
+                  value={elementSpacing[0]}
+                  onChange={e => handlePlanarInputChange(() => setElementSpacing([e.target.value, elementSpacing[1]]))}
+                  required
+                  style={{ width: 60, marginLeft: 4 }}
+                  aria-describedby="spacing-help"
+                />
+              </label>
+              <label style={{ fontSize: 12 }}>
+                Columns (λ):
+                <input
+                  id="element-spacing-cols"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max={maxSpacing}
+                  value={elementSpacing[1]}
+                  onChange={e => handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], e.target.value]))}
+                  required
+                  style={{ width: 60, marginLeft: 4 }}
+                  aria-describedby="spacing-help"
+                />
+              </label>
+            </div>
+            <div id="spacing-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+              Spacing range: 0.1 to {maxSpacing} wavelengths
+              {(elementSpacing[0] > maxSpacing || elementSpacing[1] > maxSpacing) && (
+                <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>
+                  {' '}⚠️ Exceeds limit
+                </span>
+              )}
+            </div>
           </div>
         </>
       )}
@@ -128,49 +205,93 @@ const PlanarArrayForm = ({
       {arrayType === 'tri' && (
         <>
           <div style={{ marginBottom: 16 }}>
-            <label>Number of Elements (X, Y):&nbsp;
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={numElem[0]}
-                onChange={e => handlePlanarInputChange(() => setNumElem([e.target.value, numElem[1]]))}
-                required
-                style={{ width: 60, marginRight: 8 }}
-              />
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={numElem[1]}
-                onChange={e => handlePlanarInputChange(() => setNumElem([numElem[0], e.target.value]))}
-                required
-                style={{ width: 60 }}
-              />
+            <label htmlFor="num-elem-tri-rows">
+              Number of Elements:
             </label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <label style={{ fontSize: 12 }}>
+                Rows:
+                <input
+                  id="num-elem-tri-rows"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={numElem[0]}
+                  onChange={e => handlePlanarInputChange(() => setNumElem([e.target.value, numElem[1]]))}
+                  required
+                  style={{ width: 60, marginLeft: 4 }}
+                  aria-describedby="num-elem-tri-help"
+                />
+              </label>
+              <label style={{ fontSize: 12 }}>
+                Columns:
+                <input
+                  id="num-elem-tri-cols"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={numElem[1]}
+                  onChange={e => handlePlanarInputChange(() => setNumElem([numElem[0], e.target.value]))}
+                  required
+                  style={{ width: 60, marginLeft: 4 }}
+                  aria-describedby="num-elem-tri-help"
+                />
+              </label>
+            </div>
+            <div id="num-elem-tri-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+              Total elements: {totalElements} (max: {maxElements})
+              {totalElements > maxElements && (
+                <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>
+                  {' '}⚠️ Exceeds limit
+                </span>
+              )}
+            </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label>Element Spacing (λ) (X, Y):&nbsp;
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={elementSpacing[0]}
-                onChange={e => handlePlanarInputChange(() => setElementSpacing([e.target.value, elementSpacing[1]]))}
-                required
-                style={{ width: 60, marginRight: 8 }}
-              />
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={elementSpacing[1]}
-                onChange={e => handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], e.target.value]))}
-                required
-                style={{ width: 60 }}
-              />
+            <label htmlFor="element-spacing-tri-rows">
+              Element Spacing:
             </label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <label style={{ fontSize: 12 }}>
+                Rows (λ):
+                <input
+                  id="element-spacing-tri-rows"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max={maxSpacing}
+                  value={elementSpacing[0]}
+                  onChange={e => handlePlanarInputChange(() => setElementSpacing([e.target.value, elementSpacing[1]]))}
+                  required
+                  style={{ width: 60, marginLeft: 4 }}
+                  aria-describedby="spacing-tri-help"
+                />
+              </label>
+              <label style={{ fontSize: 12 }}>
+                Columns (λ):
+                <input
+                  id="element-spacing-tri-cols"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max={maxSpacing}
+                  value={elementSpacing[1]}
+                  onChange={e => handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], e.target.value]))}
+                  required
+                  style={{ width: 60, marginLeft: 4 }}
+                  aria-describedby="spacing-tri-help"
+                />
+              </label>
+            </div>
+            <div id="spacing-tri-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+              Spacing range: 0.1 to {maxSpacing} wavelengths
+              {(elementSpacing[0] > maxSpacing || elementSpacing[1] > maxSpacing) && (
+                <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>
+                  {' '}⚠️ Exceeds limit
+                </span>
+              )}
+            </div>
           </div>
         </>
       )}
@@ -178,31 +299,46 @@ const PlanarArrayForm = ({
       {arrayType === 'circ' && (
         <>
           <div style={{ marginBottom: 16 }}>
-            <label>Number of Elements per ring:</label>
+            <label htmlFor="num-elem-circ">
+              Number of Elements per ring:
+            </label>
             <div style={{ marginTop: 4 }}>
               <input 
+                id="num-elem-circ"
                 type="text" 
                 value={numElemRaw} 
                 onChange={e => handlePlanarInputChange(() => setNumElemRaw(e.target.value))} 
                 placeholder="8, 16, 24"
                 style={{ width: '100%' }} 
+                aria-describedby="num-elem-circ-help"
               />
-              <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+              <div id="num-elem-circ-help" style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
                 Enter comma-separated positive integers (e.g., "8, 16, 24" for 3 rings)
+                <br />
+                Total elements: {totalElements} (max: {maxElements})
+                {totalElements > maxElements && (
+                  <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>
+                    {' '}⚠️ Exceeds limit
+                  </span>
+                )}
               </div>
             </div>
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label>Ring Radii:</label>
+            <label htmlFor="radius-circ">
+              Ring Radii:
+            </label>
             <div style={{ marginTop: 4 }}>
               <input 
+                id="radius-circ"
                 type="text" 
                 value={radiusRaw} 
                 onChange={e => handlePlanarInputChange(() => setRadiusRaw(e.target.value))} 
                 placeholder="0.5, 1.0, 1.5"
                 style={{ width: '100%' }} 
+                aria-describedby="radius-circ-help"
               />
-              <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+              <div id="radius-circ-help" style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
                 Enter comma-separated positive numbers in wavelengths (e.g., "0.5, 1.0, 1.5")
               </div>
             </div>
@@ -211,8 +347,14 @@ const PlanarArrayForm = ({
       )}
 
       <div style={{ marginBottom: 16 }}>
-        <label>Plot Type:&nbsp;
-          <select value={plotType} onChange={e => handlePlanarInputChange(() => setPlotType(e.target.value))} style={{ width: 150 }}>
+        <label htmlFor="plot-type-planar">
+          Plot Type:
+          <select 
+            id="plot-type-planar"
+            value={plotType} 
+            onChange={e => handlePlanarInputChange(() => setPlotType(e.target.value))} 
+            style={{ width: 150, marginLeft: 8 }}
+          >
             <option value="pattern_cut">Pattern Cut</option>
             <option value="manifold">Manifold</option>
             <option value="polar3d">3D Polar</option>
@@ -224,8 +366,10 @@ const PlanarArrayForm = ({
 
       {plotType === 'pattern_cut' && (
         <div style={{ marginBottom: 16 }}>
-          <label>Cut Angle (deg):&nbsp;
+          <label htmlFor="cut-angle">
+            Cut Angle (deg):
             <input
+              id="cut-angle"
               type="number"
               step="1"
               min="0"
@@ -233,16 +377,16 @@ const PlanarArrayForm = ({
               value={cutAngle}
               onChange={e => handlePlanarInputChange(() => setCutAngle(e.target.value))}
               required
-              style={{ width: 80 }}
+              style={{ width: 80, marginLeft: 8 }}
             />
           </label>
         </div>
       )}
 
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', marginBottom: 8 }}>Amplitude Tapering:</label>
-        <div style={{ marginLeft: 20 }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>
+      <fieldset style={{ marginBottom: 16, border: '1px solid #ccc', padding: 12, borderRadius: 4 }}>
+        <legend>Amplitude Tapering</legend>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label>
             <input 
               type="radio" 
               name="planarWindowType" 
@@ -251,9 +395,9 @@ const PlanarArrayForm = ({
               onChange={e => handlePlanarInputChange(() => setWindowType(e.target.value))} 
               disabled={arrayType === 'tri' || arrayType === 'circ'}
             />
-            &nbsp;Window Function
+            Window Function
           </label>
-          <label style={{ display: 'block', marginBottom: 4 }}>
+          <label>
             <input 
               type="radio" 
               name="planarWindowType" 
@@ -262,15 +406,22 @@ const PlanarArrayForm = ({
               onChange={e => handlePlanarInputChange(() => setWindowType(e.target.value))} 
               disabled={arrayType === 'tri' || arrayType === 'circ'}
             />
-            &nbsp;Set SLL
+            Set SLL
           </label>
         </div>
-      </div>
+      </fieldset>
       
       {windowType === 'window' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>Pre-defined Window:&nbsp;
-            <select value={window} onChange={e => handlePlanarInputChange(() => setWindow(e.target.value))} style={{ width: 150 }} disabled={arrayType === 'tri' || arrayType === 'circ'}>
+          <label htmlFor="window-function-planar">
+            Pre-defined Window:
+            <select 
+              id="window-function-planar"
+              value={window} 
+              onChange={e => handlePlanarInputChange(() => setWindow(e.target.value))} 
+              style={{ width: 150, marginLeft: 8 }} 
+              disabled={arrayType === 'tri' || arrayType === 'circ'}
+            >
               <option value="">No Window</option>
               {windowOptions.map(option => (
                 <option key={option} value={option}>{option}</option>
@@ -282,14 +433,16 @@ const PlanarArrayForm = ({
       
       {windowType === 'SLL' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>SLL (dB):&nbsp;
+          <label htmlFor="sll-value-planar">
+            SLL (dB):
             <input 
+              id="sll-value-planar"
               type="number" 
               min="13" 
               max="80" 
               value={SLL} 
               onChange={e => handlePlanarInputChange(() => setSLL(e.target.value))} 
-              style={{ width: 80 }} 
+              style={{ width: 80, marginLeft: 8 }} 
               disabled={arrayType === 'tri' || arrayType === 'circ'}
             />
           </label>
@@ -298,8 +451,12 @@ const PlanarArrayForm = ({
 
       <div style={{ marginBottom: 16 }}>
         <label>
-          <input type="checkbox" checked={elementPattern} onChange={e => handlePlanarInputChange(() => setElementPattern(e.target.checked))} />
-          &nbsp;Element Pattern (cosine)
+          <input 
+            type="checkbox" 
+            checked={elementPattern} 
+            onChange={e => handlePlanarInputChange(() => setElementPattern(e.target.checked))} 
+          />
+          Element Pattern (cosine)
         </label>
       </div>
 
@@ -311,27 +468,48 @@ const PlanarArrayForm = ({
             onChange={e => setRealtime(e.target.checked)}
             style={{ marginRight: 8 }}
           />
-          Realtime
+          Realtime Analysis
         </label>
       </div>
       
       <button
         type="submit"
-        disabled={realtime}
+        disabled={realtime || loading}
         style={{
-          background: realtime ? '#ccc' : '#0074D9',
-          color: realtime ? '#888' : 'white',
-          cursor: realtime ? 'not-allowed' : 'pointer',
+          background: realtime || loading ? '#ccc' : '#0074D9',
+          color: realtime || loading ? '#888' : 'white',
+          cursor: realtime || loading ? 'not-allowed' : 'pointer',
           border: 'none',
           borderRadius: 6,
           padding: '10px 22px',
           fontWeight: 600,
           fontSize: 16,
-          marginTop: 8
+          marginTop: 8,
+          minWidth: 120,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8
         }}
+        aria-describedby={realtime ? "realtime-active-planar" : undefined}
       >
-        Analyze
+        {loading && (
+          <div style={{
+            width: 16,
+            height: 16,
+            border: '2px solid transparent',
+            borderTop: '2px solid currentColor',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+        )}
+        {loading ? 'Analyzing...' : 'Analyze'}
       </button>
+      {realtime && (
+        <div id="realtime-active-planar" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Analysis runs automatically when realtime is enabled
+        </div>
+      )}
     </form>
   );
 };

@@ -27,40 +27,54 @@ const LinearArrayForm = ({
   windowOptions
 }) => {
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Linear Array Analysis</h2>
+    <form onSubmit={handleSubmit} aria-labelledby="linear-array-title">
+      <h2 id="linear-array-title">Linear Array Analysis</h2>
       
       <div style={{ marginBottom: 16 }}>
-        <label>Number of Elements:&nbsp;
+        <label htmlFor="num-elem">
+          Number of Elements:
           <input
+            id="num-elem"
             type="number"
             min="1"
             max="2000"
             value={numElem}
             onChange={e => handleLinearInputChange(() => setNumElem(e.target.value))}
             required
-            style={{ width: 80 }}
+            style={{ width: 80, marginLeft: 8 }}
+            aria-describedby="num-elem-help"
           />
         </label>
+        <div id="num-elem-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Enter a number between 1 and 2000
+        </div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label>Element Spacing (λ):&nbsp;
+        <label htmlFor="element-spacing">
+          Element Spacing (λ):
           <input
+            id="element-spacing"
             type="number"
             step="0.1"
             min="0.1"
             value={elementSpacing}
             onChange={e => handleLinearInputChange(() => setElementSpacing(e.target.value))}
             required
-            style={{ width: 200 }}
+            style={{ width: 200, marginLeft: 8 }}
+            aria-describedby="element-spacing-help"
           />
         </label>
+        <div id="element-spacing-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Spacing in wavelengths (minimum 0.1λ)
+        </div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label>Scan Angle (deg):&nbsp;
+        <label htmlFor="scan-angle">
+          Scan Angle (deg):
           <input
+            id="scan-angle"
             type="number"
             step="1"
             min="-90"
@@ -68,45 +82,66 @@ const LinearArrayForm = ({
             value={scanAngle}
             onChange={e => handleLinearInputChange(() => setScanAngle(e.target.value))}
             required
-            style={{ width: 80 }}
+            style={{ width: 80, marginLeft: 8 }}
+            aria-describedby="scan-angle-help"
           />
         </label>
+        <div id="scan-angle-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Beam scan angle from -90° to 90°
+        </div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label>Plot Type:&nbsp;
-          <select value={plotType} onChange={e => handleLinearInputChange(() => setPlotType(e.target.value))} style={{ width: 150 }}>
+        <label htmlFor="plot-type">
+          Plot Type:
+          <select 
+            id="plot-type"
+            value={plotType} 
+            onChange={e => handleLinearInputChange(() => setPlotType(e.target.value))} 
+            style={{ width: 150, marginLeft: 8 }}
+          >
             <option value="cartesian">Cartesian</option>
             <option value="polar">Polar</option>
           </select>
         </label>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <label>Tapering Method:&nbsp;
-          <input
-            type="radio"
-            name="windowType"
-            value="window" 
-            checked={windowType === 'window'} 
-            onChange={e => handleLinearInputChange(() => setWindowType(e.target.value))} 
-          />
-          &nbsp;Pre-defined Window 
-          <input
-            type="radio"
-            name="windowType"
-            value="SLL" 
-            checked={windowType === 'SLL'} 
-            onChange={e => handleLinearInputChange(() => setWindowType(e.target.value))} 
-          />
-          &nbsp;Set SLL
-        </label>
-      </div>
+      <fieldset style={{ marginBottom: 16, border: '1px solid #ccc', padding: 12, borderRadius: 4 }}>
+        <legend>Tapering Method</legend>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label>
+            <input
+              type="radio"
+              name="windowType"
+              value="window" 
+              checked={windowType === 'window'} 
+              onChange={e => handleLinearInputChange(() => setWindowType(e.target.value))} 
+            />
+            Pre-defined Window 
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="windowType"
+              value="SLL" 
+              checked={windowType === 'SLL'} 
+              onChange={e => handleLinearInputChange(() => setWindowType(e.target.value))} 
+            />
+            Set SLL
+          </label>
+        </div>
+      </fieldset>
 
       {windowType === 'window' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>Window Function:&nbsp;
-            <select value={window} onChange={e => handleLinearInputChange(() => setWindow(e.target.value))} style={{ width: 150 }}>
+          <label htmlFor="window-function">
+            Window Function:
+            <select 
+              id="window-function"
+              value={window} 
+              onChange={e => handleLinearInputChange(() => setWindow(e.target.value))} 
+              style={{ width: 150, marginLeft: 8 }}
+            >
               <option value="">No Window</option>
               {windowOptions.map(option => (
                 <option key={option} value={option}>{option}</option>
@@ -118,15 +153,17 @@ const LinearArrayForm = ({
 
       {windowType === 'SLL' && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>SLL (dB):&nbsp;
+          <label htmlFor="sll-value">
+            SLL (dB):
             <input
+              id="sll-value"
               type="number"
               step="1"
               min="10"
               max="80" 
               value={SLL} 
               onChange={e => handleLinearInputChange(() => setSLL(e.target.value))} 
-              style={{ width: 80 }} 
+              style={{ width: 80, marginLeft: 8 }} 
             />
           </label>
         </div>
@@ -134,21 +171,27 @@ const LinearArrayForm = ({
 
       <div style={{ marginBottom: 16 }}>
         <label>
-          <input type="checkbox" checked={elementPattern} onChange={e => handleLinearInputChange(() => setElementPattern(e.target.checked))} />
-          &nbsp;Element Pattern (cosine)
+          <input 
+            type="checkbox" 
+            checked={elementPattern} 
+            onChange={e => handleLinearInputChange(() => setElementPattern(e.target.checked))} 
+          />
+          Element Pattern (cosine)
         </label>
       </div>
 
       {elementPattern && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label>Element Gain (dB):&nbsp;
+          <label htmlFor="element-gain">
+            Element Gain (dB):
             <input
+              id="element-gain"
               type="number"
               step="1"
               value={elementGain}
               onChange={e => handleLinearInputChange(() => setElementGain(e.target.value))}
               disabled={!elementPattern}
-              style={{ width: 80 }}
+              style={{ width: 80, marginLeft: 8 }}
             />
           </label>
         </div>
@@ -162,27 +205,48 @@ const LinearArrayForm = ({
             onChange={e => setRealtime(e.target.checked)}
             style={{ marginRight: 8 }}
           />
-          Realtime
+          Realtime Analysis
         </label>
       </div>
       
       <button
         type="submit"
-        disabled={realtime}
+        disabled={realtime || loading}
         style={{
-          background: realtime ? '#ccc' : '#0074D9',
-          color: realtime ? '#888' : 'white',
-          cursor: realtime ? 'not-allowed' : 'pointer',
+          background: realtime || loading ? '#ccc' : '#0074D9',
+          color: realtime || loading ? '#888' : 'white',
+          cursor: realtime || loading ? 'not-allowed' : 'pointer',
           border: 'none',
           borderRadius: 6,
           padding: '10px 22px',
           fontWeight: 600,
           fontSize: 16,
-          marginTop: 8
+          marginTop: 8,
+          minWidth: 120,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8
         }}
+        aria-describedby={realtime ? "realtime-active" : undefined}
       >
-        Analyze
+        {loading && (
+          <div style={{
+            width: 16,
+            height: 16,
+            border: '2px solid transparent',
+            borderTop: '2px solid currentColor',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+        )}
+        {loading ? 'Analyzing...' : 'Analyze'}
       </button>
+      {realtime && (
+        <div id="realtime-active" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Analysis runs automatically when realtime is enabled
+        </div>
+      )}
     </form>
   );
 };

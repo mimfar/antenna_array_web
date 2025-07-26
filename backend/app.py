@@ -223,13 +223,18 @@ def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,
             'data': data
         }
         
-    elif plot_type in ['contour', 'polarsurf']:
+    elif plot_type == 'contour':
         # Generate plot image
-        if plot_type == 'contour':
-            fig, ax = arr.pattern_contour()
-        else:  # polarsurf
-            fig, ax = arr.polarsurf()
         
+        fig, ax = arr.pattern_contour()
+        img_base64 = generate_plot_image(fig)
+        return {
+            **base_response,
+            'plot': img_base64
+        }
+
+    elif plot_type == 'polarsurf':
+        fig, ax = arr.polarsurf()
         img_base64 = generate_plot_image(fig)
         return {
             **base_response,
@@ -417,10 +422,18 @@ def analyze_planar_array():
     total_num_elem = num_elem[0] * num_elem[1] if array_type in ['rect','tri'] else sum(num_elem)    
         # Security checks
     if total_num_elem <= 0 or total_num_elem > config.MAX_ELEMENTS:
-        return jsonify({'error': f'num_elem values must be between 1 and {config.MAX_ELEMENTS}'}), 400
+        app.logger.warning(f"Total elements {total_num_elem} exceeds limit {config.MAX_ELEMENTS}")
+        return create_error_response(
+            f'Total number of elements ({total_num_elem}) exceeds the maximum limit of {config.MAX_ELEMENTS}. '
+            f'Please reduce the number of elements in your array configuration.'
+        )
     if array_type in ['rect','tri']:
         if any(s <= 0 or s > config.MAX_SPACING for s in element_spacing):
-            return jsonify({'error': f'element_spacing values must be between 0 and {config.MAX_SPACING}'}), 400
+            app.logger.warning(f"Element spacing {element_spacing} exceeds limit {config.MAX_SPACING}")
+            return create_error_response(
+                f'Element spacing values must be between 0.1 and {config.MAX_SPACING} wavelengths. '
+                f'Current values: {element_spacing}'
+            )
     # if array_type in ['circ']:
     #     if any(s <= 0 or s > config.MAX_SPACING for s in radius):
     #         return jsonify({'error': f'element_spacing values must be between 0 and {config.MAX_SPACING}'}), 400
