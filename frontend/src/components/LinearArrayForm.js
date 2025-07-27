@@ -22,6 +22,7 @@ const LinearArrayForm = ({
   realtime,
   setRealtime,
   handleLinearInputChange,
+  handleIntegerInputChange,
   handleSubmit,
   loading,
   windowOptions
@@ -36,17 +37,18 @@ const LinearArrayForm = ({
           <input
             id="num-elem"
             type="number"
+            step="1"
             min="1"
-            max="2000"
+            max="1000"
             value={numElem}
-            onChange={e => handleLinearInputChange(() => setNumElem(e.target.value))}
+            onChange={e => handleIntegerInputChange(e.target.value, setNumElem)}
             required
             style={{ width: 80, marginLeft: 8 }}
             aria-describedby="num-elem-help"
           />
         </label>
         <div id="num-elem-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-          Enter a number between 1 and 2000
+          Enter a whole number between 1 and 1000
         </div>
       </div>
 
@@ -130,44 +132,44 @@ const LinearArrayForm = ({
             Set SLL
           </label>
         </div>
+        
+        {windowType === 'window' && (
+          <div style={{ marginTop: 12, marginLeft: 20 }}>
+            <label htmlFor="window-function">
+              Window Function:
+              <select 
+                id="window-function"
+                value={window} 
+                onChange={e => handleLinearInputChange(() => setWindow(e.target.value))} 
+                style={{ width: 150, marginLeft: 8 }}
+              >
+                <option value="">No Window</option>
+                {windowOptions.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+
+        {windowType === 'SLL' && (
+          <div style={{ marginTop: 12, marginLeft: 20 }}>
+            <label htmlFor="sll-value">
+              SLL (dB):
+              <input
+                id="sll-value"
+                type="number"
+                step="1"
+                min="10"
+                max="80" 
+                value={SLL} 
+                onChange={e => handleLinearInputChange(() => setSLL(e.target.value))} 
+                style={{ width: 80, marginLeft: 8 }} 
+              />
+            </label>
+          </div>
+        )}
       </fieldset>
-
-      {windowType === 'window' && (
-        <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label htmlFor="window-function">
-            Window Function:
-            <select 
-              id="window-function"
-              value={window} 
-              onChange={e => handleLinearInputChange(() => setWindow(e.target.value))} 
-              style={{ width: 150, marginLeft: 8 }}
-            >
-              <option value="">No Window</option>
-              {windowOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-
-      {windowType === 'SLL' && (
-        <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label htmlFor="sll-value">
-            SLL (dB):
-            <input
-              id="sll-value"
-              type="number"
-              step="1"
-              min="10"
-              max="80" 
-              value={SLL} 
-              onChange={e => handleLinearInputChange(() => setSLL(e.target.value))} 
-              style={{ width: 80, marginLeft: 8 }} 
-            />
-          </label>
-        </div>
-      )}
 
       <div style={{ marginBottom: 16 }}>
         <label>
@@ -179,6 +181,8 @@ const LinearArrayForm = ({
           Element Pattern (cosine)
         </label>
       </div>
+
+
 
       {elementPattern && (
         <div style={{ marginBottom: 16, marginLeft: 20 }}>

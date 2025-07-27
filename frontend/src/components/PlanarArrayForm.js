@@ -18,6 +18,7 @@ const PlanarArrayForm = ({
   realtime,
   setRealtime,
   handlePlanarInputChange,
+  handlePlanarIntegerInputChange,
   handlePlanarSubmit,
   loading,
   windowType,
@@ -120,10 +121,11 @@ const PlanarArrayForm = ({
                 <input
                   id="num-elem-rows"
                   type="number"
+                  step="1"
                   min="1"
                   max="100"
                   value={numElem[0]}
-                  onChange={e => handlePlanarInputChange(() => setNumElem([e.target.value, numElem[1]]))}
+                  onChange={e => handlePlanarIntegerInputChange(e.target.value, 0, setNumElem)}
                   required
                   style={{ width: 60, marginLeft: 4 }}
                   aria-describedby="num-elem-help"
@@ -134,10 +136,11 @@ const PlanarArrayForm = ({
                 <input
                   id="num-elem-cols"
                   type="number"
+                  step="1"
                   min="1"
                   max="100"
                   value={numElem[1]}
-                  onChange={e => handlePlanarInputChange(() => setNumElem([numElem[0], e.target.value]))}
+                  onChange={e => handlePlanarIntegerInputChange(e.target.value, 1, setNumElem)}
                   required
                   style={{ width: 60, marginLeft: 4 }}
                   aria-describedby="num-elem-help"
@@ -214,10 +217,11 @@ const PlanarArrayForm = ({
                 <input
                   id="num-elem-tri-rows"
                   type="number"
+                  step="1"
                   min="1"
                   max="100"
                   value={numElem[0]}
-                  onChange={e => handlePlanarInputChange(() => setNumElem([e.target.value, numElem[1]]))}
+                  onChange={e => handlePlanarIntegerInputChange(e.target.value, 0, setNumElem)}
                   required
                   style={{ width: 60, marginLeft: 4 }}
                   aria-describedby="num-elem-tri-help"
@@ -228,10 +232,11 @@ const PlanarArrayForm = ({
                 <input
                   id="num-elem-tri-cols"
                   type="number"
+                  step="1"
                   min="1"
                   max="100"
                   value={numElem[1]}
-                  onChange={e => handlePlanarInputChange(() => setNumElem([numElem[0], e.target.value]))}
+                  onChange={e => handlePlanarIntegerInputChange(e.target.value, 1, setNumElem)}
                   required
                   style={{ width: 60, marginLeft: 4 }}
                   aria-describedby="num-elem-tri-help"
@@ -409,45 +414,45 @@ const PlanarArrayForm = ({
             Set SLL
           </label>
         </div>
+        
+        {windowType === 'window' && (
+          <div style={{ marginTop: 12, marginLeft: 20 }}>
+            <label htmlFor="window-function-planar">
+              Pre-defined Window:
+              <select 
+                id="window-function-planar"
+                value={window} 
+                onChange={e => handlePlanarInputChange(() => setWindow(e.target.value))} 
+                style={{ width: 150, marginLeft: 8 }} 
+                disabled={arrayType === 'tri' || arrayType === 'circ'}
+              >
+                <option value="">No Window</option>
+                {windowOptions.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+        
+        {windowType === 'SLL' && (
+          <div style={{ marginTop: 12, marginLeft: 20 }}>
+            <label htmlFor="sll-value-planar">
+              SLL (dB):
+              <input 
+                id="sll-value-planar"
+                type="number" 
+                min="13" 
+                max="80" 
+                value={SLL} 
+                onChange={e => handlePlanarInputChange(() => setSLL(e.target.value))} 
+                style={{ width: 80, marginLeft: 8 }} 
+                disabled={arrayType === 'tri' || arrayType === 'circ'}
+              />
+            </label>
+          </div>
+        )}
       </fieldset>
-      
-      {windowType === 'window' && (
-        <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label htmlFor="window-function-planar">
-            Pre-defined Window:
-            <select 
-              id="window-function-planar"
-              value={window} 
-              onChange={e => handlePlanarInputChange(() => setWindow(e.target.value))} 
-              style={{ width: 150, marginLeft: 8 }} 
-              disabled={arrayType === 'tri' || arrayType === 'circ'}
-            >
-              <option value="">No Window</option>
-              {windowOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-      
-      {windowType === 'SLL' && (
-        <div style={{ marginBottom: 16, marginLeft: 20 }}>
-          <label htmlFor="sll-value-planar">
-            SLL (dB):
-            <input 
-              id="sll-value-planar"
-              type="number" 
-              min="13" 
-              max="80" 
-              value={SLL} 
-              onChange={e => handlePlanarInputChange(() => setSLL(e.target.value))} 
-              style={{ width: 80, marginLeft: 8 }} 
-              disabled={arrayType === 'tri' || arrayType === 'circ'}
-            />
-          </label>
-        </div>
-      )}
 
       <div style={{ marginBottom: 16 }}>
         <label>

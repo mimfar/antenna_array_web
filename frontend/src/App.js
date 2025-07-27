@@ -90,7 +90,7 @@ function App() {
   const [window, setWindow] = useState('');                     // Window function type (hann, hamming, etc.)
   const [SLL, setSLL] = useState(20);                           // Side lobe level for SLL-based tapering
   const [windowType, setWindowType] = useState('window');       // Tapering method: 'window' or 'SLL'
-  // const [showManifold, setShowManifold] = useState(false);      // Show array manifold plot
+
   
   // Planar array analysis parameters
   const [planarArrayType, setPlanarArrayType] = useState('rect');           // Array type: 'rect', 'tri', 'circ'
@@ -153,14 +153,30 @@ function App() {
   // Helper for input change with realtime analysis
   const handleLinearInputChange = (handler) => {
     handler();
-    if (realtimeRef.current) {
-      analyzeLinearArray();
+    // Don't trigger analysis here - the useEffect will handle it
+  };
+
+  const handleIntegerInputChange = (value, setter) => {
+    // Sanitize to integer immediately
+    const sanitized = sanitizeInteger(value, 1, 1000);
+    if (sanitized !== null) {
+      setter(sanitized);
+      // Don't trigger analysis here - the useEffect will handle it
     }
   };
   const handlePlanarInputChange = (handler) => {
     handler();
-    if (realtimeRef.current) {
-      analyzePlanarArray();
+    // Don't trigger analysis here - the useEffect will handle it
+  };
+
+  const handlePlanarIntegerInputChange = (value, index, setter) => {
+    // Sanitize to integer immediately
+    const sanitized = sanitizeInteger(value, 1, 100);
+    if (sanitized !== null) {
+      const currentArray = [...planarNumElem];
+      currentArray[index] = sanitized;
+      setter(currentArray);
+      // Don't trigger analysis here - the useEffect will handle it
     }
   };
 
@@ -203,7 +219,8 @@ function App() {
           element_gain: Number(elementGain),
           window: windowType === 'window' ? (window || null) : null,
           SLL: windowType === 'SLL' ? Number(SLL) : null,
-          plot_type: plotType
+          plot_type: plotType,
+          show_manifold: true
         })
       });
       
@@ -227,6 +244,7 @@ function App() {
    * Supports rectangular, triangular, and circular array configurations
    */
   const analyzePlanarArray = async () => {
+    
     setLoading(true);
     setError('');
     setResult(null);
@@ -393,10 +411,11 @@ function App() {
       setXMin(result.theta[0]);
       setXMax(result.theta[result.theta.length - 1]);
       setYMin(result.ymin);
-      // Only set yMax automatically if there are no kept traces
-      // Otherwise, let the trace-based yMax logic handle it
-      if (traces.length === 0) {
-      setYMax(result.ymax);
+      // Only set yMax automatically if there are no kept traces and it's empty or matches auto-set value
+      // This allows users to customize Ymax while still providing good defaults
+      if (traces.length === 0 && (yMax === '' || yMax === autoYMax)) {
+        setYMax(result.ymax);
+        setAutoYMax(result.ymax);
       }
       setXStep('30');
       setYStep('10');
@@ -415,9 +434,13 @@ function App() {
       result.ymax !== undefined
     ) {
       setYMin(result.ymin);
-      setYMax(result.ymax);
+      // Only set Ymax if it's empty or matches the auto-set value to allow user customization
+      if (yMax === '' || yMax === planarAutoYMax) {
+        setYMax(result.ymax);
+        setPlanarAutoYMax(result.ymax);
+      }
     }
-  }, [activeTab, planarPlotType, result]);
+  }, [activeTab, planarPlotType, result, yMax, planarAutoYMax]);
 
   // Add useEffect to auto-analyze when number of elements changes for linear array
   useEffect(() => {
@@ -433,7 +456,7 @@ function App() {
       analyzeLinearArray();
     }
     // Optionally, you could clear the result or show a message if invalid
-  }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern,activeTab,realtime]);
+  }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern, plotType, activeTab, realtime]);
 
   // Add useEffect to auto-analyze when element gain changes for linear array
   useEffect(() => {
@@ -490,7 +513,7 @@ function App() {
       analyzePlanarArray();
     }
   }
-  }, [activeTab, planarArrayType, planarNumElem, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarScanAngle, planarElementPattern, planarWindow, planarSLL, planarWindowType,planarPlotType, planarCutAngle,realtime]);
+  }, [activeTab, planarArrayType, planarNumElem, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarScanAngle, planarElementPattern, planarWindow, planarSLL, planarWindowType, planarPlotType, planarCutAngle, realtime]);
 
   // Track the last auto-set yMax to avoid overriding user changes
   useEffect(() => {
@@ -506,9 +529,9 @@ function App() {
     const allYMaxes = [...traceYMaxes, currentYMax].filter(v => v !== null && v !== undefined);
     if (allYMaxes.length === 0) return;
     const largestYMax = Math.max(...allYMaxes.map(Number));
-    // Only update yMax if it is empty, matches the previous auto-set value, or if there are kept traces
-    // This ensures that when we have kept traces, we always maintain the largest yMax
-    if (yMax === '' || yMax === autoYMax || traces.length > 0) {
+    // Only update yMax if it is empty or matches the previous auto-set value
+    // This allows users to customize Ymax while still providing good defaults
+    if (yMax === '' || yMax === autoYMax) {
       setYMax(String(largestYMax));
       setAutoYMax(String(largestYMax));
     }
@@ -530,8 +553,9 @@ function App() {
     const allYMaxes = [...traceYMaxes, currentYMax].filter(v => v !== null && v !== undefined);
     if (allYMaxes.length === 0) return;
     const largestYMax = Math.max(...allYMaxes.map(Number));
-    // Only update yMax if it is empty, matches the previous auto-set value, or if there are kept traces
-    if (yMax === '' || yMax === planarAutoYMax || planarTraces.length > 0) {
+    // Only update yMax if it is empty or matches the previous auto-set value
+    // This allows users to customize Ymax while still providing good defaults
+    if (yMax === '' || yMax === planarAutoYMax) {
       setYMax(String(largestYMax));
       setPlanarAutoYMax(String(largestYMax));
     }
@@ -851,7 +875,7 @@ function App() {
     
     const getPlotLayout = () => {
       const baseLayout = {
-        width: 528,
+        width: 581,
         height: 300,
         margin: { l: 60, r: 20, t: 30, b: 40 },
         showlegend: false,
@@ -1032,7 +1056,7 @@ function App() {
         {/* Main results area */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
           {/* Plot area */}
-          <div style={{ flex: '0 0 528px', width: 528, minWidth: 528, maxWidth: 528, height: 374, minHeight: 374, maxHeight: 374, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
+          <div style={{ flex: '0 0 581px', width: 581, minWidth: 581, maxWidth: 581, height: 374, minHeight: 374, maxHeight: 374, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
           <Plot
               data={getPlotData()}
               layout={getPlotLayout()}
@@ -1070,7 +1094,7 @@ function App() {
             </div>
           </div>
           {/* Legend area */}
-          <div style={{ flex: '1 1 0', minWidth: 260, maxWidth: 340, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
+          <div style={{ flex: '1 1 0', minWidth: 240, maxWidth: 300, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
             <h3 style={{ fontSize: 15, margin: '0 0 8px 0' }}>Legend</h3>
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
@@ -1163,7 +1187,7 @@ function App() {
             const y = Array(x.length).fill(0);
            const markerSize = numElem > 30 ? 4 : 10;
             return (
-             <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
+             <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16, flex: '0 0 581px', width: 581, minWidth: 581, maxWidth: 581 }}>
               <Plot
                 data={[{
                     x,
@@ -1175,9 +1199,10 @@ function App() {
                     showlegend: false,
                 }]}
                 layout={{
-                  width: 528,
+                  width: 581,
                   height: 90,
-                  margin: { l: 50, r: 20, t: 30, b: 40 },
+                  margin: { l: 60, r: 20, t: 30, b: 40 },
+                  showlegend: false,
                   xaxis: {
                     title: { text: 'Element Position (λ)', font: { size: 12 } },
                     showgrid: true,
@@ -1194,7 +1219,7 @@ function App() {
                   plot_bgcolor: '#fff',
                   paper_bgcolor: '#fff',
                 }}
-                config={{ responsive: true, displayModeBar: false }}
+                config={{ responsive: true, displayModeBar: false, useResizeHandler: true }}
               />
             </div>
             );
@@ -1329,7 +1354,7 @@ function App() {
      */
     const getPlanarPlotLayout = () => {
       const baseLayout = {
-        width: 528,
+        width: 581,
         height: 300,
         margin: { l: 60, r: 20, t: 30, b: 40 },
         showlegend: false,
@@ -1449,13 +1474,17 @@ function App() {
           </div>
         )}
         
-        {planarPlotType === 'pattern_cut' && result.theta && result.pattern ? (
+                      {(() => {
+                                 const condition = planarPlotType === 'pattern_cut' && result.theta && result.pattern;
+                return condition;
+              })() ? (
           <>
             {/* Main results area with plot and legend */}
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
               {/* Plot area */}
-              <div style={{ flex: '0 0 528px', width: 528, minWidth: 528, maxWidth: 528, height: 374, minHeight: 374, maxHeight: 374, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
+              <div style={{ flex: '0 0 581px', width: 581, minWidth: 581, maxWidth: 581, height: 374, minHeight: 374, maxHeight: 374, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
                 <Plot
+                  key={`pattern-cut-${planarPlotType}`}
                   data={getPlanarPlotData()}
                   layout={getPlanarPlotLayout()}
             config={{ responsive: true, displayModeBar: true }}
@@ -1488,7 +1517,7 @@ function App() {
           </div>
               </div>
               {/* Legend area */}
-              <div style={{ flex: '1 1 0', minWidth: 260, maxWidth: 340, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
+              <div style={{ flex: '1 1 0', minWidth: 240, maxWidth: 300, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
                 <h3 style={{ fontSize: 15, margin: '0 0 8px 0' }}>Legend</h3>
                 <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                   <thead>
@@ -1602,19 +1631,20 @@ function App() {
       
             {/* Manifold plot */}
           {result.manifold_x && result.manifold_y && (
-              <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
-            <Plot
-                  data={[{
-                  x: result.manifold_x,
-                  y: result.manifold_y,
-                  type: 'scatter',
-                  mode: 'markers',
-                  name: 'Array Elements',
-                  marker: { color: 'red', symbol: 'x', size: 8 },
-                  showlegend: false,
-                  }]}
+              <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16, flex: '0 0 581px', width: 581, minWidth: 581, maxWidth: 581 }}>
+                          <Plot
+                key={`manifold-under-pattern-${planarPlotType}`}
+                data={[{
+                x: result.manifold_x,
+                y: result.manifold_y,
+                type: 'scatter',
+                mode: 'markers',
+                name: 'Array Elements',
+                marker: { color: 'red', symbol: 'x', size: 8 },
+                showlegend: false,
+                }]}
               layout={{
-                width: 528,
+                width: 581,
                 height: 200,
                 margin: { l: 50, r: 20, t: 30, b: 50 },
                 xaxis: {
@@ -1685,8 +1715,9 @@ function App() {
               </table>
             </div>
         </>
-      ) : planarPlotType === 'manifold' && result.manifold_x && result.manifold_y ? (
-        <Plot
+              ) : planarPlotType === 'manifold' ? (
+          <Plot
+            key={`manifold-${planarPlotType}`}
             data={[{
               x: result.manifold_x,
               y: result.manifold_y,
@@ -1696,7 +1727,7 @@ function App() {
               marker: { color: 'red', symbol: 'x', size: 10 },
             }]}
           layout={{
-            width: 528,
+            width: 581,
             height: 400,
             margin: { l: 50, r: 20, t: 30, b: 50 },
             title: { text: 'Array Manifold', font: { size: 16 } },
@@ -1718,10 +1749,11 @@ function App() {
           }}
           config={{ responsive: true, displayModeBar: true }}
         />
-        ) : result.plot_type === '3d_polar' && result.data ? (
+        ) : planarPlotType === 'polar3d' && result.data ? (
           // Render native Plotly 3D polar plot
           <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
             <Plot
+              key={`3d-polar-${planarPlotType}`}
               data={[
                 {
                   type: 'surface',
@@ -1761,10 +1793,16 @@ function App() {
               config={{ responsive: true, displayModeBar: true }}
             />
           </div>
-      ) : result.plot ? (
+      ) : planarPlotType === 'contour' && result.plot ? (
         <img
           src={`data:image/png;base64,${result.plot}`}
-          alt="Planar Array Plot"
+          alt="Contour Plot"
+          style={{ maxWidth: '80%', border: '1px solid #ccc', borderRadius: 8 }}
+        />
+      ) : planarPlotType === 'polarsurf' && result.plot ? (
+        <img
+          src={`data:image/png;base64,${result.plot}`}
+          alt="Polar Surface Plot"
           style={{ maxWidth: '80%', border: '1px solid #ccc', borderRadius: 8 }}
         />
       ) : null}
@@ -1907,6 +1945,7 @@ function App() {
               realtime={realtime}
               setRealtime={setRealtime}
               handleLinearInputChange={handleLinearInputChange}
+              handleIntegerInputChange={handleIntegerInputChange}
               handleSubmit={handleSubmit}
               loading={loading}
               windowOptions={windowOptions}
@@ -1930,6 +1969,7 @@ function App() {
               realtime={realtime}
               setRealtime={setRealtime}
               handlePlanarInputChange={handlePlanarInputChange}
+              handlePlanarIntegerInputChange={handlePlanarIntegerInputChange}
               handlePlanarSubmit={handleSubmit}
               loading={loading}
               windowType={planarWindowType}
