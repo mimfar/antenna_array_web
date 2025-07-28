@@ -450,27 +450,10 @@ class PlanarArray():
     
     def pattern_contour(self,**kwargs):
         G =  20 * np.log10(np.abs(self.AF))
-        # [T,P] = np.meshgrid(self.theta,self.phi)
-        # idx_p = [np.argmin(abs(self.phi-phi_0)) for phi_0 in [90,180,270]]
-        # G1 = G[0:idx_p[0],:]
-        # G2 = np.flip(G[idx_p[0]:idx_p[1],1:],axis=1)
-        # G3 = np.flip(G[idx_p[1]:idx_p[2],1:],axis=1)
-        # G4 = G[idx_p[2]:-1,:]
-        # print(G1.shape,G2.shape,G3.shape,G4.shape)
-        # GT = np.vstack((np.hstack((G2,G4)), np.hstack((G3,G1))))
-        # thetaT = np.linspace(-180,180,2*len(self.theta)-1)
-        # phiT = np.linspace(-90,90,int(len(self.phi)/2))
-        # [TT,PT] = np.meshgrid(thetaT,phiT)
-
-        # print(TT.shape,PT.shape,GT.shape  )  
-        G11 = np.flip(np.roll(G[1:,1:],int(len(self.phi)/2),axis=0))
-        G12 = np.flip(G[1:,:],axis=0)
-        G21 = np.flip(np.roll(G[:,1:],int(len(self.phi)/2),axis=0),axis=1)
-        G22 = G
-        # GT = np.vstack((np.hstack((np.flip(G[1:,1:],axis=1),np.flip(G[1:,:],axis=0))), np.hstack((np.flip(G[:,1:],axis=1),G))))
-        GT = np.vstack((np.hstack((G11,G12)),np.hstack((G21,G22))))
-        thetaT = np.hstack((-np.flip(self.theta[1:]), self.theta))
-        phiT = np.hstack((-np.flip(self.phi[1:]), self.phi))
+        # phi -180->180., theta 0->180
+        GT =  np.roll(G,int(len(self.phi)/2),axis=0)        
+        thetaT = self.theta
+        phiT = self.phi - 180
         [TT,PT] = np.meshgrid(thetaT,phiT)
         
         return self._plot_contour(TT,PT,GT,**kwargs);
@@ -502,7 +485,7 @@ class PlanarArray():
         }
         
     @staticmethod
-    def _plot_contour(T,P,G,g_range=30,fig=None,ax=None,tlim = [-180,180], plim = [-90,90],tlab=r'$\theta$',plab=r'$\phi$',title=''):
+    def _plot_contour(T,P,G,g_range=30,fig=None,ax=None,tlim = [0,180], plim = [-90,90],tlab=r'$\theta$',plab=r'$\phi$',title=''):
         
         if isinstance(fig, matplotlib.figure.Figure) and (not isinstance(ax,matplotlib.axes.Axes)):
             if fig.axes:
