@@ -58,10 +58,21 @@ const LinearArrayForm = ({
           <input
             id="element-spacing"
             type="number"
-            step="0.1"
+            step="0.01"
             min="0.1"
             value={elementSpacing}
-            onChange={e => handleLinearInputChange(() => setElementSpacing(e.target.value))}
+            onChange={e => {
+              const inputValue = e.target.value;
+              // Allow empty string, decimal point, and partial decimal inputs
+              if (inputValue === '' || inputValue === '.' || inputValue === '0.' || inputValue === '0') {
+                handleLinearInputChange(() => setElementSpacing(inputValue));
+              } else {
+                const value = parseFloat(inputValue);
+                if (!isNaN(value) && value >= 0.1) {
+                  handleLinearInputChange(() => setElementSpacing(inputValue));
+                }
+              }
+            }}
             required
             style={{ width: 200, marginLeft: 8 }}
             aria-describedby="element-spacing-help"
@@ -109,7 +120,7 @@ const LinearArrayForm = ({
       </div>
 
       <fieldset style={{ marginBottom: 16, border: '1px solid #ccc', padding: 12, borderRadius: 4 }}>
-        <legend>Tapering Method</legend>
+        <legend>Amplitude Tapering</legend>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <label>
             <input
@@ -156,16 +167,16 @@ const LinearArrayForm = ({
           <div style={{ marginTop: 12, marginLeft: 20 }}>
             <label htmlFor="sll-value">
               SLL (dB):
-              <input
+              <select
                 id="sll-value"
-                type="number"
-                step="1"
-                min="10"
-                max="80" 
                 value={SLL} 
-                onChange={e => handleLinearInputChange(() => setSLL(e.target.value))} 
-                style={{ width: 80, marginLeft: 8 }} 
-              />
+                onChange={e => handleLinearInputChange(() => setSLL(parseInt(e.target.value)))} 
+                style={{ width: 100, marginLeft: 8 }} 
+              >
+                {Array.from({ length: 13 }, (_, i) => 20 + i * 5).map(value => (
+                  <option key={value} value={value}>{value} dB</option>
+                ))}
+              </select>
             </label>
           </div>
         )}

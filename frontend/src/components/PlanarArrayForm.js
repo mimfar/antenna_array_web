@@ -85,8 +85,21 @@ const PlanarArrayForm = ({
               id="scan-angle-theta"
               type="number"
               step="any"
+              min="-90"
+              max="90"
               value={scanAngle[0]}
-              onChange={e => handlePlanarInputChange(() => setScanAngle([e.target.value, scanAngle[1]]))}
+              onChange={e => {
+                const inputValue = e.target.value;
+                // Allow empty string, minus sign, and valid numbers
+                if (inputValue === '' || inputValue === '-' || inputValue === '-.' || inputValue === '.') {
+                  handlePlanarInputChange(() => setScanAngle([inputValue, scanAngle[1]]));
+                } else {
+                  const value = parseFloat(inputValue);
+                  if (!isNaN(value) && value >= -90 && value <= 90) {
+                    handlePlanarInputChange(() => setScanAngle([inputValue, scanAngle[1]]));
+                  }
+                }
+              }}
               style={{ width: 60, marginLeft: 4 }}
               aria-describedby="scan-angle-help"
             />
@@ -97,15 +110,28 @@ const PlanarArrayForm = ({
               id="scan-angle-phi"
               type="number"
               step="any"
+              min="-360"
+              max="360"
               value={scanAngle[1]}
-              onChange={e => handlePlanarInputChange(() => setScanAngle([scanAngle[0], e.target.value]))}
+              onChange={e => {
+                const inputValue = e.target.value;
+                // Allow empty string, minus sign, and valid numbers
+                if (inputValue === '' || inputValue === '-' || inputValue === '-.' || inputValue === '.') {
+                  handlePlanarInputChange(() => setScanAngle([scanAngle[0], inputValue]));
+                } else {
+                  const value = parseFloat(inputValue);
+                  if (!isNaN(value) && value >= -360 && value <= 360) {
+                    handlePlanarInputChange(() => setScanAngle([scanAngle[0], inputValue]));
+                  }
+                }
+              }}
               style={{ width: 60, marginLeft: 4 }}
               aria-describedby="scan-angle-help"
             />
           </label>
         </div>
         <div id="scan-angle-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-          Theta: elevation angle, Phi: azimuth angle
+          Elevation angle (-90° to 90°), Azimuth angle (-360° to 360°)
         </div>
       </div>
 
@@ -167,11 +193,22 @@ const PlanarArrayForm = ({
                 <input
                   id="element-spacing-rows"
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0.1"
                   max={maxSpacing}
                   value={elementSpacing[0]}
-                  onChange={e => handlePlanarInputChange(() => setElementSpacing([e.target.value, elementSpacing[1]]))}
+                  onChange={e => {
+                    const inputValue = e.target.value;
+                    // Allow empty string, decimal point, and partial decimal inputs
+                    if (inputValue === '' || inputValue === '.' || inputValue === '0.' || inputValue === '0') {
+                      handlePlanarInputChange(() => setElementSpacing([inputValue, elementSpacing[1]]));
+                    } else {
+                      const value = parseFloat(inputValue);
+                      if (!isNaN(value) && value >= 0.1) {
+                        handlePlanarInputChange(() => setElementSpacing([inputValue, elementSpacing[1]]));
+                      }
+                    }
+                  }}
                   required
                   style={{ width: 60, marginLeft: 4 }}
                   aria-describedby="spacing-help"
@@ -182,11 +219,22 @@ const PlanarArrayForm = ({
                 <input
                   id="element-spacing-cols"
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0.1"
                   max={maxSpacing}
                   value={elementSpacing[1]}
-                  onChange={e => handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], e.target.value]))}
+                  onChange={e => {
+                    const inputValue = e.target.value;
+                    // Allow empty string, decimal point, and partial decimal inputs
+                    if (inputValue === '' || inputValue === '.' || inputValue === '0.' || inputValue === '0') {
+                      handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], inputValue]));
+                    } else {
+                      const value = parseFloat(inputValue);
+                      if (!isNaN(value) && value >= 0.1) {
+                        handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], inputValue]));
+                      }
+                    }
+                  }}
                   required
                   style={{ width: 60, marginLeft: 4 }}
                   aria-describedby="spacing-help"
@@ -263,11 +311,22 @@ const PlanarArrayForm = ({
                 <input
                   id="element-spacing-tri-rows"
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0.1"
                   max={maxSpacing}
                   value={elementSpacing[0]}
-                  onChange={e => handlePlanarInputChange(() => setElementSpacing([e.target.value, elementSpacing[1]]))}
+                  onChange={e => {
+                    const inputValue = e.target.value;
+                    // Allow empty string, decimal point, and partial decimal inputs
+                    if (inputValue === '' || inputValue === '.' || inputValue === '0.' || inputValue === '0') {
+                      handlePlanarInputChange(() => setElementSpacing([inputValue, elementSpacing[1]]));
+                    } else {
+                      const value = parseFloat(inputValue);
+                      if (!isNaN(value) && value >= 0.1) {
+                        handlePlanarInputChange(() => setElementSpacing([inputValue, elementSpacing[1]]));
+                      }
+                    }
+                  }}
                   required
                   style={{ width: 60, marginLeft: 4 }}
                   aria-describedby="spacing-tri-help"
@@ -278,11 +337,22 @@ const PlanarArrayForm = ({
                 <input
                   id="element-spacing-tri-cols"
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0.1"
                   max={maxSpacing}
                   value={elementSpacing[1]}
-                  onChange={e => handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], e.target.value]))}
+                  onChange={e => {
+                    const inputValue = e.target.value;
+                    // Allow empty string, decimal point, and partial decimal inputs
+                    if (inputValue === '' || inputValue === '.' || inputValue === '0.' || inputValue === '0') {
+                      handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], inputValue]));
+                    } else {
+                      const value = parseFloat(inputValue);
+                      if (!isNaN(value) && value >= 0.1) {
+                        handlePlanarInputChange(() => setElementSpacing([elementSpacing[0], inputValue]));
+                      }
+                    }
+                  }}
                   required
                   style={{ width: 60, marginLeft: 4 }}
                   aria-describedby="spacing-tri-help"
@@ -345,6 +415,26 @@ const PlanarArrayForm = ({
               />
               <div id="radius-circ-help" style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
                 Enter comma-separated positive numbers in wavelengths (e.g., "0.5, 1.0, 1.5")
+                {(() => {
+                  const numElemParts = numElemRaw.split(',').map(s => s.trim()).filter(s => s !== '');
+                  const radiusParts = radiusRaw.split(',').map(s => s.trim()).filter(s => s !== '');
+                  
+                  // Show warning if either list is empty or if they have different lengths
+                  if (numElemParts.length === 0 || radiusParts.length === 0) {
+                    return (
+                      <div style={{ color: '#f57c00', fontWeight: 'bold', marginTop: 4 }}>
+                        ⚠️ Warning: Please complete both number of elements and radii lists
+                      </div>
+                    );
+                  } else if (numElemParts.length !== radiusParts.length) {
+                    return (
+                      <div style={{ color: '#f57c00', fontWeight: 'bold', marginTop: 4 }}>
+                        ⚠️ Warning: Number of elements ({numElemParts.length}) and radii ({radiusParts.length}) must have the same length
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
           </div>
@@ -377,14 +467,29 @@ const PlanarArrayForm = ({
               id="cut-angle"
               type="number"
               step="1"
-              min="0"
+              min="-360"
               max="360"
               value={cutAngle}
-              onChange={e => handlePlanarInputChange(() => setCutAngle(e.target.value))}
+              onChange={e => {
+                const inputValue = e.target.value;
+                // Allow empty string, minus sign, and valid numbers
+                if (inputValue === '' || inputValue === '-' || inputValue === '-.' || inputValue === '.') {
+                  handlePlanarInputChange(() => setCutAngle(inputValue));
+                } else {
+                  const value = parseFloat(inputValue);
+                  if (!isNaN(value) && value >= -360 && value <= 360) {
+                    handlePlanarInputChange(() => setCutAngle(inputValue));
+                  }
+                }
+              }}
               required
               style={{ width: 80, marginLeft: 8 }}
+              aria-describedby="cut-angle-help"
             />
           </label>
+          <div id="cut-angle-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+            Azimuth cut angle: -360° to 360°
+          </div>
         </div>
       )}
 
@@ -439,16 +544,17 @@ const PlanarArrayForm = ({
           <div style={{ marginTop: 12, marginLeft: 20 }}>
             <label htmlFor="sll-value-planar">
               SLL (dB):
-              <input 
+              <select 
                 id="sll-value-planar"
-                type="number" 
-                min="13" 
-                max="80" 
                 value={SLL} 
-                onChange={e => handlePlanarInputChange(() => setSLL(e.target.value))} 
-                style={{ width: 80, marginLeft: 8 }} 
+                onChange={e => handlePlanarInputChange(() => setSLL(parseInt(e.target.value)))} 
+                style={{ width: 100, marginLeft: 8 }} 
                 disabled={arrayType === 'tri' || arrayType === 'circ'}
-              />
+              >
+                {Array.from({ length: 13 }, (_, i) => 20 + i * 5).map(value => (
+                  <option key={value} value={value}>{value} dB</option>
+                ))}
+              </select>
             </label>
           </div>
         )}

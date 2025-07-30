@@ -34,7 +34,7 @@ class Config:
     
     # Server Configuration
     HOST = os.environ.get('HOST', '0.0.0.0')
-    PORT = int(os.environ.get('PORT', 5000))
+    PORT = int(os.environ.get('PORT', 5001))
     
     # Rate Limiting Configuration
     RATE_LIMIT_DEFAULT = os.environ.get('RATE_LIMIT_DEFAULT', '3600 per hour')

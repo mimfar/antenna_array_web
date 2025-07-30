@@ -55,6 +55,12 @@ function App() {
     const scan_angle = sanitizeNumber(data.scan_angle, -90, 90);
     if (scan_angle === null) errors.push('scan_angle must be a number between -90 and 90');
     
+    // Validate SLL if present
+    if (data.SLL !== undefined) {
+      const SLL = sanitizeNumber(data.SLL, 20, 80);
+      if (SLL === null) errors.push('SLL must be a number between 20 and 80');
+    }
+    
     return { isValid: errors.length === 0, errors, sanitizedData: { ...data, num_elem, element_spacing, scan_angle } };
   };
   
@@ -66,7 +72,34 @@ function App() {
     }
     
     const scan_angle = sanitizeArray(data.scan_angle, 2, 2);
-    if (scan_angle === null) errors.push('scan_angle must be an array of 2 numbers');
+    if (scan_angle === null) {
+      errors.push('scan_angle must be an array of 2 numbers');
+    } else {
+      // Validate theta (elevation angle): -90 to 90 degrees
+      if (scan_angle[0] < -90 || scan_angle[0] > 90) {
+        errors.push('Theta (elevation angle) must be between -90° and 90°');
+      }
+      // Validate phi (azimuth angle): -360 to 360 degrees
+      if (scan_angle[1] < -360 || scan_angle[1] > 360) {
+        errors.push('Phi (azimuth angle) must be between -360° and 360°');
+      }
+    }
+    
+    // Validate cut angle if present
+    if (data.cut_angle !== undefined) {
+      const cut_angle = sanitizeNumber(data.cut_angle);
+      if (cut_angle === null) {
+        errors.push('cut_angle must be a number');
+      } else if (cut_angle < -360 || cut_angle > 360) {
+        errors.push('Cut angle must be between -360° and 360°');
+      }
+    }
+    
+    // Validate SLL if present
+    if (data.SLL !== undefined) {
+      const SLL = sanitizeNumber(data.SLL, 20, 80);
+      if (SLL === null) errors.push('SLL must be a number between 20 and 80');
+    }
     
     return { isValid: errors.length === 0, errors, sanitizedData: { ...data, scan_angle } };
   };
@@ -117,6 +150,16 @@ function App() {
   const [yMax, setYMax] = useState('');                                     // Y-axis maximum value
   const [xStep, setXStep] = useState('30');                                 // X-axis tick step
   const [yStep, setYStep] = useState('10');                                 // Y-axis tick step
+  const [axisLocked, setAxisLocked] = useState(false);                     // Lock axis limits
+
+  // Planar array axis limits (separate from linear array)
+  const [planarXMin, setPlanarXMin] = useState('');                         // Planar X-axis minimum value
+  const [planarXMax, setPlanarXMax] = useState('');                         // Planar X-axis maximum value
+  const [planarYMin, setPlanarYMin] = useState('');                         // Planar Y-axis minimum value
+  const [planarYMax, setPlanarYMax] = useState('');                         // Planar Y-axis maximum value
+  const [planarXStep, setPlanarXStep] = useState('30');                     // Planar X-axis tick step
+  const [planarYStep, setPlanarYStep] = useState('10');                     // Planar Y-axis tick step
+  const [planarAxisLocked, setPlanarAxisLocked] = useState(false);          // Lock planar axis limits
 
   // Trace management for linear array comparison
   const [traces, setTraces] = useState([]);                                 // Array of kept plot traces
@@ -311,6 +354,15 @@ function App() {
     }
     const validatedScanAngle = scanAngles;
     
+    // For circular arrays, only proceed if both lists have the same length
+    if (planarArrayType === 'circ') {
+      if (validatedNumElem.length !== validatedRadius.length) {
+        // Don't set error, just return without making API call
+        setLoading(false);
+        return;
+      }
+    }
+    
     console.log('Planar array parameters:', {
       array_type: planarArrayType,
       num_elem: validatedNumElem,
@@ -398,6 +450,16 @@ function App() {
     }
   };
 
+  // Add toggle function for axis lock
+  const toggleAxisLock = () => {
+    setAxisLocked(!axisLocked);
+  };
+
+  // Add toggle function for planar axis lock
+  const togglePlanarAxisLock = () => {
+    setPlanarAxisLocked(!planarAxisLocked);
+  };
+
   // ============================================================================
   // EFFECTS AND UTILITIES
   // ============================================================================
@@ -408,19 +470,23 @@ function App() {
    */
   useEffect(() => {
     if (result && result.theta && result.pattern) {
+      // Only update axis limits if not locked
+      if (!axisLocked) {
       setXMin(result.theta[0]);
       setXMax(result.theta[result.theta.length - 1]);
       setYMin(result.ymin);
-      // Only set yMax automatically if there are no kept traces and it's empty or matches auto-set value
-      // This allows users to customize Ymax while still providing good defaults
-      if (traces.length === 0 && (yMax === '' || yMax === autoYMax)) {
-        setYMax(result.ymax);
-        setAutoYMax(result.ymax);
+        // Only set yMax automatically if there are no kept traces and it's empty or matches auto-set value
+        // This allows users to customize Ymax while still providing good defaults
+        if (traces.length === 0 && (yMax === '' || yMax === autoYMax)) {
+      setYMax(result.ymax);
+          setAutoYMax(result.ymax);
       }
+      }
+      // Always update step values (these don't affect the plot range)
       setXStep('30');
       setYStep('10');
     }
-  }, [result, traces.length]);
+  }, [result, traces.length, axisLocked]);
 
   // Add a new useEffect for planar array pattern cut
   useEffect(() => {
@@ -433,14 +499,22 @@ function App() {
       result.ymin !== undefined &&
       result.ymax !== undefined
     ) {
-      setYMin(result.ymin);
-      // Only set Ymax if it's empty or matches the auto-set value to allow user customization
-      if (yMax === '' || yMax === planarAutoYMax) {
-        setYMax(result.ymax);
-        setPlanarAutoYMax(result.ymax);
+      // Only update axis limits if not locked
+      if (!planarAxisLocked) {
+        setPlanarXMin(result.theta[0]);
+        setPlanarXMax(result.theta[result.theta.length - 1]);
+        setPlanarYMin(result.ymin);
+        // Only set Ymax if it's empty or matches the auto-set value to allow user customization
+        if (planarYMax === '' || planarYMax === planarAutoYMax) {
+          setPlanarYMax(result.ymax);
+          setPlanarAutoYMax(result.ymax);
+        }
       }
+      // Always update step values (these don't affect the plot range)
+      setPlanarXStep('30');
+      setPlanarYStep('10');
     }
-  }, [activeTab, planarPlotType, result, yMax, planarAutoYMax]);
+  }, [activeTab, planarPlotType, result, planarYMax, planarAutoYMax, planarAxisLocked]);
 
   // Add useEffect to auto-analyze when number of elements changes for linear array
   useEffect(() => {
@@ -531,7 +605,7 @@ function App() {
     const largestYMax = Math.max(...allYMaxes.map(Number));
     // Only update yMax if it is empty or matches the previous auto-set value
     // This allows users to customize Ymax while still providing good defaults
-    if (yMax === '' || yMax === autoYMax) {
+    if (!axisLocked && (yMax === '' || yMax === autoYMax)) {
       setYMax(String(largestYMax));
       setAutoYMax(String(largestYMax));
     }
@@ -555,8 +629,8 @@ function App() {
     const largestYMax = Math.max(...allYMaxes.map(Number));
     // Only update yMax if it is empty or matches the previous auto-set value
     // This allows users to customize Ymax while still providing good defaults
-    if (yMax === '' || yMax === planarAutoYMax) {
-      setYMax(String(largestYMax));
+    if (!planarAxisLocked && (planarYMax === '' || planarYMax === planarAutoYMax)) {
+      setPlanarYMax(String(largestYMax));
       setPlanarAutoYMax(String(largestYMax));
     }
   }, [planarTraces, result, planarShowCurrent, yMax, planarAutoYMax, activeTab]);
@@ -1091,6 +1165,24 @@ function App() {
                 Y step:&nbsp;
                 <input type="number" value={yStep} onChange={e => setYStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
               </label>
+              <button
+                onClick={toggleAxisLock}
+                style={{
+                  background: axisLocked ? '#0074D9' : '#f0f0f0',
+                  color: axisLocked ? 'white' : '#333',
+                  border: '1px solid #ccc',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                  fontSize: 10,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2
+                }}
+                title={axisLocked ? "Unlock axis limits" : "Lock axis limits"}
+              >
+                {axisLocked ? '🔒' : '🔓'} {axisLocked ? 'Locked' : 'Lock'}
+              </button>
             </div>
           </div>
           {/* Legend area */}
@@ -1372,15 +1464,15 @@ function App() {
         xaxis: {
           title: { text: 'Angle (deg)', font: { size: 12, color: '#222' } },
           showgrid: true,
-          range: xMin !== '' && xMax !== '' ? [Number(xMin), Number(xMax)] : undefined,
-          dtick: xStep !== '' ? Number(xStep) : undefined,
+          range: planarXMin !== '' && planarXMax !== '' ? [Number(planarXMin), Number(planarXMax)] : undefined,
+          dtick: planarXStep !== '' ? Number(planarXStep) : undefined,
           automargin: true,
         },
         yaxis: {
           title: { text: 'dB', font: { size: 12, color: '#222' } },
           showgrid: true,
-          range: yMin !== '' && yMax !== '' ? [Number(yMin), Number(yMax)] : undefined,
-          dtick: yStep !== '' ? Number(yStep) : undefined,
+          range: planarYMin !== '' && planarYMax !== '' ? [Number(planarYMin), Number(planarYMax)] : undefined,
+          dtick: planarYStep !== '' ? Number(planarYStep) : undefined,
           automargin: true,
         },
         annotations: planarAnnotate && result && result.peak_angle !== undefined ? [
@@ -1492,28 +1584,46 @@ function App() {
                 <div style={{ display: 'flex', gap: 4, marginTop: 16, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap', fontSize: 11 }}>
             <label style={{ margin: 0 }}>
               X min:&nbsp;
-                    <input type="number" value={xMin} onChange={e => setXMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                    <input type="number" value={planarXMin} onChange={e => setPlanarXMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
             <label style={{ margin: 0 }}>
               X max:&nbsp;
-                    <input type="number" value={xMax} onChange={e => setXMax(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                    <input type="number" value={planarXMax} onChange={e => setPlanarXMax(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
             <label style={{ margin: 0 }}>
               X step:&nbsp;
-                    <input type="number" value={xStep} onChange={e => setXStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                    <input type="number" value={planarXStep} onChange={e => setPlanarXStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
             <label style={{ margin: 0 }}>
               Y min:&nbsp;
-                    <input type="number" value={yMin} onChange={e => setYMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                    <input type="number" value={planarYMin} onChange={e => setPlanarYMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
             <label style={{ margin: 0 }}>
               Y max:&nbsp;
-                    <input type="number" value={yMax} onChange={e => setYMax(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                    <input type="number" value={planarYMax} onChange={e => setPlanarYMax(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
             <label style={{ margin: 0 }}>
               Y step:&nbsp;
-                    <input type="number" value={yStep} onChange={e => setYStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                    <input type="number" value={planarYStep} onChange={e => setPlanarYStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
+            <button
+              onClick={togglePlanarAxisLock}
+              style={{
+                background: planarAxisLocked ? '#0074D9' : '#f0f0f0',
+                color: planarAxisLocked ? 'white' : '#333',
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                padding: '2px 6px',
+                fontSize: 10,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2
+              }}
+              title={planarAxisLocked ? "Unlock axis limits" : "Lock axis limits"}
+            >
+              {planarAxisLocked ? '🔒' : '🔓'} {planarAxisLocked ? 'Locked' : 'Lock'}
+            </button>
           </div>
               </div>
               {/* Legend area */}
@@ -1632,17 +1742,17 @@ function App() {
             {/* Manifold plot */}
           {result.manifold_x && result.manifold_y && (
               <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16, flex: '0 0 581px', width: 581, minWidth: 581, maxWidth: 581 }}>
-                          <Plot
+            <Plot
                 key={`manifold-under-pattern-${planarPlotType}`}
-                data={[{
-                x: result.manifold_x,
-                y: result.manifold_y,
-                type: 'scatter',
-                mode: 'markers',
-                name: 'Array Elements',
-                marker: { color: 'red', symbol: 'x', size: 8 },
-                showlegend: false,
-                }]}
+                  data={[{
+                  x: result.manifold_x,
+                  y: result.manifold_y,
+                  type: 'scatter',
+                  mode: 'markers',
+                  name: 'Array Elements',
+                  marker: { color: 'red', symbol: 'x', size: 8 },
+                  showlegend: false,
+                  }]}
               layout={{
                 width: 581,
                 height: 200,
@@ -1653,12 +1763,15 @@ function App() {
                   zeroline: true,
                   scaleanchor: 'y',
                   scaleratio: 1,
+                  constrain: 'domain',
                 },
                 yaxis: {
                   title: { text: 'Y Position (λ)', font: { size: 12 } },
                   showgrid: true,
                   zeroline: true,
+                  scaleanchor: 'x',
                   scaleratio: 1,
+                  constrain: 'domain',
                 },
                 plot_bgcolor: '#fff',
                 paper_bgcolor: '#fff',
@@ -1716,7 +1829,7 @@ function App() {
             </div>
         </>
               ) : planarPlotType === 'manifold' ? (
-          <Plot
+        <Plot
             key={`manifold-${planarPlotType}`}
             data={[{
               x: result.manifold_x,
@@ -1737,12 +1850,15 @@ function App() {
               zeroline: true,
               scaleanchor: 'y',
               scaleratio: 1,
+              constrain: 'domain',
             },
             yaxis: {
               title: { text: 'Y Position (λ)', font: { size: 14 } },
               showgrid: true,
               zeroline: true,
+              scaleanchor: 'x',
               scaleratio: 1,
+              constrain: 'domain',
             },
             plot_bgcolor: '#fff',
             paper_bgcolor: '#fff',
@@ -1797,13 +1913,13 @@ function App() {
         <img
           src={`data:image/png;base64,${result.plot}`}
           alt="Contour Plot"
-          style={{ maxWidth: '80%', border: '1px solid #ccc', borderRadius: 8 }}
+          style={{ maxWidth: '50%', border: '1px solid #ccc', borderRadius: 8 }}
         />
       ) : planarPlotType === 'polarsurf' && result.plot ? (
         <img
           src={`data:image/png;base64,${result.plot}`}
           alt="Polar Surface Plot"
-          style={{ maxWidth: '80%', border: '1px solid #ccc', borderRadius: 8 }}
+          style={{ maxWidth: '50%', border: '1px solid #ccc', borderRadius: 8 }}
         />
       ) : null}
       

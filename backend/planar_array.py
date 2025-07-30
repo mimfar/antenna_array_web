@@ -153,7 +153,7 @@ class PlanarArray():
         AF = AFrow * AFcol
         T = np.tile(theta,(len(phi),1))
         cos_theta = np.cos(np.radians(T))
-        cos_theta[T>89] = np.cos(np.radians(89.95))
+        cos_theta[T>89] = np.cos(np.radians(89.0))
         
         if self.element_pattern:
             AF = AF * cos_theta
@@ -213,10 +213,11 @@ class PlanarArray():
         return fig,ax
 
     def pattern_cut(self,cut_angle):
+        cut_angle = cut_angle % 360
         G = db20(self.AF)
         theta_cut = np.hstack((-np.flip(self.theta[1:]), self.theta))
         idx_phi_cut1 = np.argmin(np.abs(self.phi - cut_angle))
-        idx_phi_cut2 = np.argmin(np.abs(self.phi - (180 + cut_angle)))
+        idx_phi_cut2 = np.argmin(np.abs(self.phi - ((180 + cut_angle)%360)))
         return theta_cut , np.hstack((np.flip(G[idx_phi_cut2,1:]), G[idx_phi_cut1,:]) )
         
     
@@ -224,6 +225,12 @@ class PlanarArray():
         '''Function calculates the Peak value and angle, SLL, and HPBW of G in dB
         assuming a pattern with a single peak (no grating lobes)'''
         theta_deg,G = self.pattern_cut(cut_angle)
+        ## reducing the theta scope to -90->90 degrees
+        idx_m90 = np.argmin(np.abs(theta_deg + 90))
+        idx_p90 = np.argmin(np.abs(theta_deg - 90))
+        theta_deg = theta_deg[idx_m90:idx_p90+1]
+        G = G[idx_m90:idx_p90+1]
+        
         peak,idx_peak  = np.max(G), np.argmax(G) 
         theta_peak = theta_deg[idx_peak]
         dG = np.sign(np.diff(G))
@@ -485,7 +492,7 @@ class PlanarArray():
         }
         
     @staticmethod
-    def _plot_contour(T,P,G,g_range=30,fig=None,ax=None,tlim = [0,180], plim = [-90,90],tlab=r'$\theta$',plab=r'$\phi$',title=''):
+    def _plot_contour(T,P,G,g_range=30,fig=None,ax=None,tlim = [0,180], plim = [-180,180],tlab=r'$\theta$',plab=r'$\phi$',title=''):
         
         if isinstance(fig, matplotlib.figure.Figure) and (not isinstance(ax,matplotlib.axes.Axes)):
             if fig.axes:

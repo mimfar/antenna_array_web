@@ -177,16 +177,26 @@ def validate_array_parameters(array_type, num_elem, element_spacing, radius=None
     
     return False, f"Invalid array type: {array_type}"
 
-def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params, cut_angle=None):
+def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params, pattern_params_3d, cut_angle=None):
     """Create standardized response for different plot types"""
-    base_response = {
-        'manifold_x': manifold_x,
-        'manifold_y': manifold_y,
-        'gain': pattern_params.Gain,
-        'peak_angle': pattern_params.Peak_Angle,
-        'sll': pattern_params.SLL,
-        'hpbw': pattern_params.HPBW
-    }
+    if plot_type == 'pattern_cut':
+        base_response = {
+            'manifold_x': manifold_x,
+            'manifold_y': manifold_y,
+            'gain': pattern_params.Gain,
+            'peak_angle': pattern_params.Peak_Angle,
+            'sll': pattern_params.SLL,
+            'hpbw': pattern_params.HPBW
+        }
+    else:
+        base_response = {
+            'manifold_x': manifold_x,
+            'manifold_y': manifold_y,
+            'gain': pattern_params_3d.Gain,
+            'peak_angle': pattern_params_3d.Peak_Angle,
+            'sll': pattern_params_3d.   SLL,
+            'hpbw': pattern_params_3d.HPBW
+        }  
     
     if plot_type == 'pattern_cut':
         # 2D pattern cut
@@ -468,6 +478,7 @@ def analyze_planar_array():
         AF = arr.calc_AF
           # Calculate pattern parameters
         pattern_params = arr.calc_peak_sll_hpbw(cut_angle)
+        pattern_params_3d = arr.calc_peak_sll_hpbw(scan_angle[1])
         # Cache the array instance for future use
         cache_array(array_key, arr)
         print(f"Created and cached new array for key: {array_key}")
@@ -477,12 +488,13 @@ def analyze_planar_array():
     manifold_y = (arr.Y - np.mean(arr.Y)).tolist()
     
     pattern_params = arr.calc_peak_sll_hpbw(cut_angle)
+    pattern_params_3d = arr.calc_peak_sll_hpbw(scan_angle[1])
 
     
    
     
     # Generate response based on plot type
-    response = create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params, cut_angle)
+    response = create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,pattern_params_3d, cut_angle)
     app.logger.info(f"Planar array analysis successful for array_type={array_type}, scan_angle={scan_angle}")
     return jsonify(response)
 

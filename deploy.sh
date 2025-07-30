@@ -30,4 +30,4 @@ source venv/bin/activate
 echo "Starting with Gunicorn..."
 gunicorn -c gunicorn.conf.py app:app
 
-echo "✅ Deployment complete! App should be running on http://localhost:5000" 
+echo "✅ Deployment complete! App should be running on http://localhost:5001" 

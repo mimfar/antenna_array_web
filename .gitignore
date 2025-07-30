@@ -38,3 +38,8 @@ test_planar_timing.py
 
 project_architecture_diagram.txt
 project_architecture_diagram.txt
+TEST_PLAN.md
+test_scripts/frontend_test_checklist.md
+test_scripts/run_quick_tests.sh
+test_scripts/run_tests.py
+TESTING_SUMMARY.md

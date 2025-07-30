@@ -72,12 +72,12 @@ To test that CORS is working correctly:
 # Test from allowed origin (should work)
 curl -H "Origin: http://localhost:3000" \
      -H "Content-Type: application/json" \
-     -X POST http://localhost:5000/api/linear-array/analyze \
+     -X POST http://localhost:5001/api/linear-array/analyze \
      -d '{"num_elem": 8, "element_spacing": 0.5}'
 
 # Test from disallowed origin (should fail)
 curl -H "Origin: http://malicious-site.com" \
      -H "Content-Type: application/json" \
-     -X POST http://localhost:5000/api/linear-array/analyze \
+     -X POST http://localhost:5001/api/linear-array/analyze \
      -d '{"num_elem": 8, "element_spacing": 0.5}'
 ``` 
