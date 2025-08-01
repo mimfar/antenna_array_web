@@ -43,7 +43,7 @@ const LinearArrayForm = ({
             value={numElem}
             onChange={e => handleIntegerInputChange(e.target.value, setNumElem)}
             required
-            style={{ width: 80, marginLeft: 8 }}
+            style={{ width: 60, marginLeft: 8 }}
             aria-describedby="num-elem-help"
           />
         </label>
@@ -74,7 +74,7 @@ const LinearArrayForm = ({
               }
             }}
             required
-            style={{ width: 200, marginLeft: 8 }}
+            style={{ width: 60, marginLeft: 8 }}
             aria-describedby="element-spacing-help"
           />
         </label>
@@ -95,7 +95,7 @@ const LinearArrayForm = ({
             value={scanAngle}
             onChange={e => handleLinearInputChange(() => setScanAngle(e.target.value))}
             required
-            style={{ width: 80, marginLeft: 8 }}
+            style={{ width: 60, marginLeft: 8 }}
             aria-describedby="scan-angle-help"
           />
         </label>
@@ -111,7 +111,7 @@ const LinearArrayForm = ({
             id="plot-type"
             value={plotType} 
             onChange={e => handleLinearInputChange(() => setPlotType(e.target.value))} 
-            style={{ width: 150, marginLeft: 8 }}
+            style={{ width: 110, marginLeft: 8 }}
           >
             <option value="cartesian">Cartesian</option>
             <option value="polar">Polar</option>
@@ -152,7 +152,7 @@ const LinearArrayForm = ({
                 id="window-function"
                 value={window} 
                 onChange={e => handleLinearInputChange(() => setWindow(e.target.value))} 
-                style={{ width: 150, marginLeft: 8 }}
+                style={{ width: 110, marginLeft: 8 }}
               >
                 <option value="">No Window</option>
                 {windowOptions.map(option => (
@@ -206,7 +206,7 @@ const LinearArrayForm = ({
               value={elementGain}
               onChange={e => handleLinearInputChange(() => setElementGain(e.target.value))}
               disabled={!elementPattern}
-              style={{ width: 80, marginLeft: 8 }}
+              style={{ width: 60, marginLeft: 8 }}
             />
           </label>
         </div>

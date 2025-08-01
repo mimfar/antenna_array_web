@@ -91,7 +91,7 @@ class PlanarArray():
         self.element_pattern = element_pattern
         self.window = window
         self.SLL = SLL
-        
+        self.FB_ratio = 20 # in dB
         array_length = np.sqrt((np.max(self.X) - np.min(self.X))**2 + (np.max(self.Y) - np.min(self.Y))**2)
         if not any(self.theta):
             HPBW = 51 / array_length
@@ -153,7 +153,7 @@ class PlanarArray():
         AF = AFrow * AFcol
         T = np.tile(theta,(len(phi),1))
         cos_theta = np.cos(np.radians(T))
-        cos_theta[T>89] = np.cos(np.radians(89.0))
+        cos_theta[T>90] = cos_theta[T>90] * 10**(-self.FB_ratio/20)
         
         if self.element_pattern:
             AF = AF * cos_theta
@@ -179,7 +179,7 @@ class PlanarArray():
 
         T = np.tile(theta,(len(phi),1))
         cos_theta = np.cos(np.radians(T))
-        cos_theta[T>89] = np.cos(np.radians(89.5))
+        cos_theta[T>90] = cos_theta[T>90] * 10**(-self.FB_ratio/20)
         
         if self.element_pattern:
             AF = AF * cos_theta
@@ -230,7 +230,7 @@ class PlanarArray():
         idx_p90 = np.argmin(np.abs(theta_deg - 90))
         theta_deg = theta_deg[idx_m90:idx_p90+1]
         G = G[idx_m90:idx_p90+1]
-        
+
         peak,idx_peak  = np.max(G), np.argmax(G) 
         theta_peak = theta_deg[idx_peak]
         dG = np.sign(np.diff(G))

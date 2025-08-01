@@ -1071,70 +1071,41 @@ function App() {
 
     return (
     <div>
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1, background: '#fff', marginBottom: 24 }}>
-           <h2>Linear Array Analysis</h2>
-           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-             <button
-               onClick={toggleAnnotate}
-               style={{
-                 padding: '8px 16px',
-                 fontSize: 14,
-                 background: annotate ? '#0074D9' : '#f5f5f5',
-                 color: annotate ? 'white' : 'black',
-                 border: '1px solid #ddd',
-                 borderRadius: 4,
-                 cursor: 'pointer'
-               }}
-             >
-               {annotate ? 'Hide Annotations' : 'Show Annotations'}
-             </button>
+      <div style={{ marginBottom: 24 }}>
+      </div>
+      
+      {result && result.theta && result.pattern && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+          <button
+            onClick={toggleAnnotate}
+            style={{
+              padding: '8px 16px',
+              fontSize: 14,
+              background: annotate ? '#0074D9' : '#f5f5f5',
+              color: annotate ? 'white' : 'black',
+              border: '1px solid #ddd',
+              borderRadius: 4,
+              cursor: 'pointer'
+            }}
+          >
+            {annotate ? 'Hide Annotations' : 'Show Annotations'}
+          </button>
           <button 
             onClick={togglePlotType} 
             style={{ 
-                 padding: '8px 16px',
+              padding: '8px 16px',
               fontSize: 14, 
-                 background: plotType === 'cartesian' ? '#0074D9' : '#f5f5f5',
-                 color: plotType === 'cartesian' ? 'white' : 'black',
-                 border: '1px solid #ddd',
+              background: plotType === 'cartesian' ? '#0074D9' : '#f5f5f5',
+              color: plotType === 'cartesian' ? 'white' : 'black',
+              border: '1px solid #ddd',
               borderRadius: 4,
-                 cursor: 'pointer'
+              cursor: 'pointer'
             }}
           >
-               {plotType === 'cartesian' ? 'Switch to Polar' : 'Switch to Cartesian'}
+            {plotType === 'cartesian' ? 'Switch to Polar' : 'Switch to Cartesian'}
           </button>
-             {/* Keep/Clear trace buttons */}
-              <button 
-               onClick={handleKeepTrace}
-               disabled={loading || !result || !result.theta || !result.pattern}
-                style={{ 
-                 padding: '8px 16px',
-                  fontSize: 14, 
-                 background: '#e0e0e0',
-                 color: 'black',
-                 border: '1px solid #ddd',
-                  borderRadius: 4,
-                  cursor: loading ? 'not-allowed' : 'pointer'
-                }}
-              >
-               Keep trace
-              </button>
-              <button 
-               onClick={handleClearTraces}
-               disabled={loading || traces.length === 0}
-                style={{ 
-                 padding: '8px 16px', 
-                  fontSize: 14, 
-                 background: '#fff',
-                 color: 'black',
-                 border: '1px solid #ddd',
-                  borderRadius: 4,
-                  cursor: loading ? 'not-allowed' : 'pointer'
-                }}
-              >
-               Clear all traces
-              </button>
         </div>
-      </div>
+      )}
       
         {/* Main results area */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
@@ -1196,7 +1167,43 @@ function App() {
           </div>
           {/* Legend area */}
           <div style={{ flex: '1 1 0', minWidth: 240, maxWidth: 300, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
-            <h3 style={{ fontSize: 15, margin: '0 0 8px 0' }}>Legend</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h3 style={{ fontSize: 15, margin: 0 }}>Legend</h3>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button 
+                  onClick={handleKeepTrace}
+                  disabled={loading || !result || !result.theta || !result.pattern}
+                  style={{ 
+                    padding: '4px 8px',
+                    fontSize: 11, 
+                    background: '#e0e0e0',
+                    color: 'black',
+                    border: '1px solid #ddd',
+                    borderRadius: 3,
+                    cursor: loading ? 'not-allowed' : 'pointer'
+                  }}
+                  title="Keep current trace"
+                >
+                  Keep
+                </button>
+                <button 
+                  onClick={handleClearTraces}
+                  disabled={loading || traces.length === 0}
+                  style={{ 
+                    padding: '4px 8px', 
+                    fontSize: 11, 
+                    background: '#fff',
+                    color: 'black',
+                    border: '1px solid #ddd',
+                    borderRadius: 3,
+                    cursor: loading ? 'not-allowed' : 'pointer'
+                  }}
+                  title="Clear all traces"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -1627,45 +1634,7 @@ function App() {
 
     return (
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1, background: '#fff', marginBottom: 24 }}>
-          <h2>Planar Array Analysis</h2>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {/* Keep/Clear trace buttons for pattern cut plots */}
-            {planarPlotType === 'pattern_cut' && (
-              <>
-                <button 
-                  onClick={handleKeepPlanarTrace}
-                  disabled={loading || !result || !result.theta || !result.pattern}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: 14,
-                    background: '#e0e0e0',
-                    color: 'black',
-                    border: '1px solid #ddd',
-                    borderRadius: 4,
-                    cursor: loading ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  Keep trace
-                </button>
-                <button
-                  onClick={handleClearPlanarTraces}
-                  disabled={loading || planarTraces.length === 0}
-                  style={{ 
-                    padding: '8px 16px', 
-                    fontSize: 14, 
-                    background: '#fff',
-                    color: 'black',
-                    border: '1px solid #ddd',
-                    borderRadius: 4,
-                    cursor: loading ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  Clear all traces
-                </button>
-              </>
-            )}
-          </div>
+        <div style={{ marginBottom: 24 }}>
         </div>
         
         {planarPlotType === 'pattern_cut' && result.theta && result.pattern && (
@@ -1767,7 +1736,43 @@ function App() {
               </div>
               {/* Legend area */}
               <div style={{ flex: '1 1 0', minWidth: 240, maxWidth: 300, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
-                <h3 style={{ fontSize: 15, margin: '0 0 8px 0' }}>Legend</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <h3 style={{ fontSize: 15, margin: 0 }}>Legend</h3>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button 
+                      onClick={handleKeepPlanarTrace}
+                      disabled={loading || !result || !result.theta || !result.pattern}
+                      style={{ 
+                        padding: '4px 8px',
+                        fontSize: 11, 
+                        background: '#e0e0e0',
+                        color: 'black',
+                        border: '1px solid #ddd',
+                        borderRadius: 3,
+                        cursor: loading ? 'not-allowed' : 'pointer'
+                      }}
+                      title="Keep current trace"
+                    >
+                      Keep
+                    </button>
+                    <button 
+                      onClick={handleClearPlanarTraces}
+                      disabled={loading || planarTraces.length === 0}
+                      style={{ 
+                        padding: '4px 8px', 
+                        fontSize: 11, 
+                        background: '#fff',
+                        color: 'black',
+                        border: '1px solid #ddd',
+                        borderRadius: 3,
+                        cursor: loading ? 'not-allowed' : 'pointer'
+                      }}
+                      title="Clear all traces"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
                 <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>

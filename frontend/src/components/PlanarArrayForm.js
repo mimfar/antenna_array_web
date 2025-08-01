@@ -65,7 +65,7 @@ const PlanarArrayForm = ({
             id="array-type"
             value={arrayType} 
             onChange={e => handlePlanarInputChange(() => setArrayType(e.target.value))} 
-            style={{ width: 150, marginLeft: 8 }}
+            style={{ width: 110, marginLeft: 8 }}
           >
             <option value="rect">Rectangular</option>
             <option value="tri">Triangular</option>
@@ -94,7 +94,7 @@ const PlanarArrayForm = ({
                   value={numElem[0]}
                   onChange={e => handlePlanarIntegerInputChange(e.target.value, 0, setNumElem)}
                   required
-                  style={{ width: 60, marginLeft: 4 }}
+                  style={{ width: 60, marginLeft: 8 }}
                   aria-describedby="num-elem-help"
                 />
               </label>
@@ -109,7 +109,7 @@ const PlanarArrayForm = ({
                   value={numElem[1]}
                   onChange={e => handlePlanarIntegerInputChange(e.target.value, 1, setNumElem)}
                   required
-                  style={{ width: 60, marginLeft: 4 }}
+                  style={{ width: 60, marginLeft: 8 }}
                   aria-describedby="num-elem-help"
                 />
               </label>
@@ -151,7 +151,7 @@ const PlanarArrayForm = ({
                     }
                   }}
                   required
-                  style={{ width: 60, marginLeft: 4 }}
+                  style={{ width: 60, marginLeft: 8 }}
                   aria-describedby="spacing-help"
                 />
               </label>
@@ -177,7 +177,7 @@ const PlanarArrayForm = ({
                     }
                   }}
                   required
-                  style={{ width: 60, marginLeft: 4 }}
+                  style={{ width: 60, marginLeft: 8 }}
                   aria-describedby="spacing-help"
                 />
               </label>
@@ -212,7 +212,7 @@ const PlanarArrayForm = ({
                   value={numElem[0]}
                   onChange={e => handlePlanarIntegerInputChange(e.target.value, 0, setNumElem)}
                   required
-                  style={{ width: 60, marginLeft: 4 }}
+                  style={{ width: 60, marginLeft: 8 }}
                   aria-describedby="num-elem-tri-help"
                 />
               </label>
@@ -227,7 +227,7 @@ const PlanarArrayForm = ({
                   value={numElem[1]}
                   onChange={e => handlePlanarIntegerInputChange(e.target.value, 1, setNumElem)}
                   required
-                  style={{ width: 60, marginLeft: 4 }}
+                  style={{ width: 60, marginLeft: 8 }}
                   aria-describedby="num-elem-tri-help"
                 />
               </label>
@@ -269,7 +269,7 @@ const PlanarArrayForm = ({
                     }
                   }}
                   required
-                  style={{ width: 60, marginLeft: 4 }}
+                  style={{ width: 60, marginLeft: 8 }}
                   aria-describedby="spacing-tri-help"
                 />
               </label>
@@ -295,7 +295,7 @@ const PlanarArrayForm = ({
                     }
                   }}
                   required
-                  style={{ width: 60, marginLeft: 4 }}
+                  style={{ width: 60, marginLeft: 8 }}
                   aria-describedby="spacing-tri-help"
                 />
               </label>
@@ -408,7 +408,7 @@ const PlanarArrayForm = ({
                   }
                 }
               }}
-              style={{ width: 60, marginLeft: 4 }}
+              style={{ width: 60, marginLeft: 8 }}
               aria-describedby="scan-angle-help"
             />
           </label>
@@ -433,7 +433,7 @@ const PlanarArrayForm = ({
                   }
                 }
               }}
-              style={{ width: 60, marginLeft: 4 }}
+              style={{ width: 60, marginLeft: 8 }}
               aria-describedby="scan-angle-help"
             />
           </label>
@@ -450,7 +450,7 @@ const PlanarArrayForm = ({
             id="plot-type-planar"
             value={plotType} 
             onChange={e => handlePlanarInputChange(() => setPlotType(e.target.value))} 
-            style={{ width: 150, marginLeft: 8 }}
+            style={{ width: 110, marginLeft: 8 }}
           >
             <option value="pattern_cut">Pattern Cut</option>
             <option value="manifold">Manifold</option>
@@ -485,7 +485,7 @@ const PlanarArrayForm = ({
                 }
               }}
               required
-              style={{ width: 80, marginLeft: 8 }}
+              style={{ width: 60, marginLeft: 8 }}
               aria-describedby="cut-angle-help"
             />
           </label>
@@ -530,7 +530,7 @@ const PlanarArrayForm = ({
                 id="window-function-planar"
                 value={window} 
                 onChange={e => handlePlanarInputChange(() => setWindow(e.target.value))} 
-                style={{ width: 150, marginLeft: 8 }} 
+                style={{ width: 110, marginLeft: 8 }} 
                 disabled={arrayType === 'tri' || arrayType === 'circ'}
               >
                 <option value="">No Window</option>
