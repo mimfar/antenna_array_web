@@ -74,66 +74,7 @@ const PlanarArrayForm = ({
         </label>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <label htmlFor="scan-angle-theta">
-          Scan Angle:
-        </label>
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <label style={{ fontSize: 12 }}>
-            Theta (deg):
-            <input
-              id="scan-angle-theta"
-              type="number"
-              step="any"
-              min="-90"
-              max="90"
-              value={scanAngle[0]}
-              onChange={e => {
-                const inputValue = e.target.value;
-                // Allow empty string, minus sign, and valid numbers
-                if (inputValue === '' || inputValue === '-' || inputValue === '-.' || inputValue === '.') {
-                  handlePlanarInputChange(() => setScanAngle([inputValue, scanAngle[1]]));
-                } else {
-                  const value = parseFloat(inputValue);
-                  if (!isNaN(value) && value >= -90 && value <= 90) {
-                    handlePlanarInputChange(() => setScanAngle([inputValue, scanAngle[1]]));
-                  }
-                }
-              }}
-              style={{ width: 60, marginLeft: 4 }}
-              aria-describedby="scan-angle-help"
-            />
-          </label>
-          <label style={{ fontSize: 12 }}>
-            Phi (deg):
-            <input
-              id="scan-angle-phi"
-              type="number"
-              step="any"
-              min="-360"
-              max="360"
-              value={scanAngle[1]}
-              onChange={e => {
-                const inputValue = e.target.value;
-                // Allow empty string, minus sign, and valid numbers
-                if (inputValue === '' || inputValue === '-' || inputValue === '-.' || inputValue === '.') {
-                  handlePlanarInputChange(() => setScanAngle([scanAngle[0], inputValue]));
-                } else {
-                  const value = parseFloat(inputValue);
-                  if (!isNaN(value) && value >= -360 && value <= 360) {
-                    handlePlanarInputChange(() => setScanAngle([scanAngle[0], inputValue]));
-                  }
-                }
-              }}
-              style={{ width: 60, marginLeft: 4 }}
-              aria-describedby="scan-angle-help"
-            />
-          </label>
-        </div>
-        <div id="scan-angle-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-          Elevation angle (-90° to 90°), Azimuth angle (-360° to 360°)
-        </div>
-      </div>
+
 
       {arrayType === 'rect' && (
         <>
@@ -440,6 +381,67 @@ const PlanarArrayForm = ({
           </div>
         </>
       )}
+
+      <div style={{ marginBottom: 16 }}>
+        <label htmlFor="scan-angle-theta">
+          Scan Angle:
+        </label>
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <label style={{ fontSize: 12 }}>
+            Theta (deg):
+            <input
+              id="scan-angle-theta"
+              type="number"
+              step="any"
+              min="-90"
+              max="90"
+              value={scanAngle[0]}
+              onChange={e => {
+                const inputValue = e.target.value;
+                // Allow empty string, minus sign, and valid numbers
+                if (inputValue === '' || inputValue === '-' || inputValue === '-.' || inputValue === '.') {
+                  handlePlanarInputChange(() => setScanAngle([inputValue, scanAngle[1]]));
+                } else {
+                  const value = parseFloat(inputValue);
+                  if (!isNaN(value) && value >= -90 && value <= 90) {
+                    handlePlanarInputChange(() => setScanAngle([inputValue, scanAngle[1]]));
+                  }
+                }
+              }}
+              style={{ width: 60, marginLeft: 4 }}
+              aria-describedby="scan-angle-help"
+            />
+          </label>
+          <label style={{ fontSize: 12 }}>
+            Phi (deg):
+            <input
+              id="scan-angle-phi"
+              type="number"
+              step="any"
+              min="-360"
+              max="360"
+              value={scanAngle[1]}
+              onChange={e => {
+                const inputValue = e.target.value;
+                // Allow empty string, minus sign, and valid numbers
+                if (inputValue === '' || inputValue === '-' || inputValue === '-.' || inputValue === '.') {
+                  handlePlanarInputChange(() => setScanAngle([scanAngle[0], inputValue]));
+                } else {
+                  const value = parseFloat(inputValue);
+                  if (!isNaN(value) && value >= -360 && value <= 360) {
+                    handlePlanarInputChange(() => setScanAngle([scanAngle[0], inputValue]));
+                  }
+                }
+              }}
+              style={{ width: 60, marginLeft: 4 }}
+              aria-describedby="scan-angle-help"
+            />
+          </label>
+        </div>
+        <div id="scan-angle-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Elevation angle (-90° to 90°), Azimuth angle (-360° to 360°)
+        </div>
+      </div>
 
       <div style={{ marginBottom: 16 }}>
         <label htmlFor="plot-type-planar">

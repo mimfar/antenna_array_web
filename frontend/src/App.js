@@ -138,6 +138,7 @@ function App() {
   const [planarSLL, setPlanarSLL] = useState(20);                           // Side lobe level
   const [planarWindowType, setPlanarWindowType] = useState('window');       // Tapering method
   const [planarPlotType, setPlanarPlotType] = useState('pattern_cut');      // Plot type: 'pattern_cut', 'manifold'
+  const [planarCoordinateType, setPlanarCoordinateType] = useState('cartesian');  // Coordinate type: 'cartesian' or 'polar'
   const [planarCutAngle, setPlanarCutAngle] = useState(0);                  // Pattern cut angle in degrees
   
   // Shared application state
@@ -458,6 +459,14 @@ function App() {
   // Add toggle function for planar axis lock
   const togglePlanarAxisLock = () => {
     setPlanarAxisLocked(!planarAxisLocked);
+  };
+
+  // Add toggle function for planar cartesian/polar plot types
+  const togglePlanarCoordinateType = () => {
+    if (result && activeTab === 'planar' && planarPlotType === 'pattern_cut') {
+      const newCoordinateType = planarCoordinateType === 'cartesian' ? 'polar' : 'cartesian';
+      setPlanarCoordinateType(newCoordinateType);
+    }
   };
 
   // ============================================================================
@@ -905,7 +914,7 @@ function App() {
         polarAnnotations.push({
           type: 'scatterpolar',
           mode: 'text',
-          r: [result.gain+1],
+          r: [result.gain-1],
           theta: [result.peak_angle],
           text: [`Peak: ${result.gain.toFixed(1)} dB @ ${result.peak_angle.toFixed(1)}°`],
           textfont: { color: 'green', size: 12 },
@@ -915,7 +924,7 @@ function App() {
         polarAnnotations.push({
           type: 'scatterpolar',
           mode: 'text',
-          r: [result.gain - 5],
+          r: [result.gain - 6],
           theta: [result.peak_angle],
           text: [`HPBW: ${result.hpbw.toFixed(1)}°`],
           textfont: { color: 'black', size: 12 },
@@ -925,7 +934,7 @@ function App() {
         polarAnnotations.push({
           type: 'scatterpolar',
           mode: 'text',
-          r: [result.gain - result.sll],
+          r: [result.gain - result.sll - 3],
           theta: [result.peak_angle],
           text: [`SLL: ${result.sll.toFixed(1)}dB`],
           textfont: { color: 'black', size: 12 },
@@ -1381,10 +1390,10 @@ function App() {
       const baseTraces = planarTraces.map((trace, idx) =>
         trace.visible
           ? {
-              x: trace.x,
-              y: trace.y,
-              type: 'scatter',
-              mode: 'lines',
+              ...(planarCoordinateType === 'cartesian' 
+                ? { x: trace.x, y: trace.y, type: 'scatter', mode: 'lines' }
+                : { r: trace.y, theta: trace.x, type: 'scatterpolar', mode: 'lines' }
+              ),
               name: trace.label,
               line: {
                 color: trace.color,
@@ -1397,10 +1406,10 @@ function App() {
 
       const currentTrace = planarShowCurrent && result && result.theta && result.pattern && result.theta.length > 0 && result.pattern.length > 0
         ? [{
-                x: result.theta,
-                y: result.pattern,
-                type: 'scatter',
-                mode: 'lines',
+            ...(planarCoordinateType === 'cartesian'
+              ? { x: result.theta, y: result.pattern, type: 'scatter', mode: 'lines' }
+              : { r: result.pattern, theta: result.theta, type: 'scatterpolar', mode: 'lines' }
+            ),
             name: 'Current',
             line: { color: '#0074D9', width: 3 },
             opacity: 1,
@@ -1415,7 +1424,9 @@ function App() {
         const sllValue = peakValue - result.sll;
         const hpbwLeft = peakAngle - result.hpbw / 2;
         const hpbwRight = peakAngle + result.hpbw / 2;
+        
         // HPBW line
+        if (planarCoordinateType === 'cartesian') {
         annotationTraces.push({
           x: [hpbwLeft, hpbwRight],
           y: [peakValue - 3, peakValue - 3],
@@ -1426,7 +1437,28 @@ function App() {
           opacity: 0.5,
           showlegend: false,
         });
+        } else {
+          // For polar plots, create HPBW arc
+          const hpbwTheta = [];
+          const hpbwR = [];
+          for (let angle = hpbwLeft; angle <= hpbwRight; angle += hpbwRight/5) {
+            hpbwTheta.push(angle);
+            hpbwR.push(peakValue - 3);
+          }
+          annotationTraces.push({
+            r: hpbwR,
+            theta: hpbwTheta,
+            type: 'scatterpolar',
+            mode: 'lines',
+            name: 'HPBW',
+            line: { color: 'black', width: 2, dash: 'dot' },
+            opacity: 0.5,
+            showlegend: false,
+          });
+        }
+        
         // SLL line
+        if (planarCoordinateType === 'cartesian') {
         annotationTraces.push({
           x: [result.theta[0], result.theta[result.theta.length - 1]],
           y: [sllValue, sllValue],
@@ -1437,8 +1469,69 @@ function App() {
           opacity: 0.5,
           showlegend: false,
         });
+        } else {
+          // For polar plots, create SLL circle
+          const sllTheta = [];
+          const sllR = [];
+          for (let angle = 0; angle <= 360; angle += 1) {
+            sllTheta.push(angle);
+            sllR.push(sllValue);
+          }
+          annotationTraces.push({
+            r: sllR,
+            theta: sllTheta,
+            type: 'scatterpolar',
+            mode: 'lines',
+            name: 'SLL',
+            line: { color: 'red', width: 2, dash: 'dot' },
+            opacity: 0.5,
+            showlegend: false,
+          });
+        }
       }
-      return [...baseTraces, ...currentTrace, ...annotationTraces];
+
+      // Add polar text annotations for planar array
+      const polarAnnotations = [];
+      if (
+        planarCoordinateType === 'polar' &&
+        planarAnnotate &&
+        result &&
+        result.peak_angle !== undefined &&
+        result.gain !== undefined
+      ) {
+        polarAnnotations.push({
+          type: 'scatterpolar',
+          mode: 'text',
+          r: [result.gain-1],
+          theta: [result.peak_angle],
+          text: [`Peak: ${result.gain.toFixed(1)} dB @ ${result.peak_angle.toFixed(1)}°`],
+          textfont: { color: 'green', size: 12 },
+          showlegend: false,
+          hoverinfo: 'skip'
+        });
+        polarAnnotations.push({
+          type: 'scatterpolar',
+          mode: 'text',
+          r: [result.gain - 6],
+          theta: [result.peak_angle],
+          text: [`HPBW: ${result.hpbw.toFixed(1)}°`],
+          textfont: { color: 'black', size: 12 },
+          showlegend: false,
+          hoverinfo: 'skip'
+        });
+        polarAnnotations.push({
+          type: 'scatterpolar',
+          mode: 'text',
+          r: [result.gain - result.sll - 3],
+          theta: [result.peak_angle],
+          text: [`SLL: ${result.sll.toFixed(1)}dB`],
+          textfont: { color: 'black', size: 12 },
+          showlegend: false,
+          hoverinfo: 'skip'
+        });
+      }
+
+      return [...baseTraces, ...currentTrace, ...annotationTraces, ...polarAnnotations];
     };
 
     /**
@@ -1453,6 +1546,8 @@ function App() {
         plot_bgcolor: '#fff',
         paper_bgcolor: '#fff',
       };
+
+      if (planarCoordinateType === 'cartesian') {
       return {
         ...baseLayout,
         title: {
@@ -1464,15 +1559,15 @@ function App() {
         xaxis: {
           title: { text: 'Angle (deg)', font: { size: 12, color: '#222' } },
           showgrid: true,
-          range: planarXMin !== '' && planarXMax !== '' ? [Number(planarXMin), Number(planarXMax)] : undefined,
-          dtick: planarXStep !== '' ? Number(planarXStep) : undefined,
+            range: planarXMin !== '' && planarXMax !== '' ? [Number(planarXMin), Number(planarXMax)] : undefined,
+            dtick: planarXStep !== '' ? Number(planarXStep) : undefined,
           automargin: true,
         },
         yaxis: {
           title: { text: 'dB', font: { size: 12, color: '#222' } },
           showgrid: true,
-          range: planarYMin !== '' && planarYMax !== '' ? [Number(planarYMin), Number(planarYMax)] : undefined,
-          dtick: planarYStep !== '' ? Number(planarYStep) : undefined,
+            range: planarYMin !== '' && planarYMax !== '' ? [Number(planarYMin), Number(planarYMax)] : undefined,
+            dtick: planarYStep !== '' ? Number(planarYStep) : undefined,
           automargin: true,
         },
         annotations: planarAnnotate && result && result.peak_angle !== undefined ? [
@@ -1502,6 +1597,32 @@ function App() {
           }
         ] : [],
       };
+      } else {
+        return {
+          ...baseLayout,
+          polar: {
+            domain: {
+              x: [0, 1],
+              y: [0, 1]
+            },
+            radialaxis: {
+              visible: true,
+              range: planarYMin !== '' && planarYMax !== '' ? [Number(planarYMin), Number(planarYMax)] : undefined,
+              dtick: planarYStep !== '' ? Number(planarYStep) : undefined,
+              title: 'Array Factor (dB)',
+            },
+            angularaxis: {
+              range: planarXMin !== '' && planarXMax !== '' ? [Number(planarXMin), Number(planarXMax)] : undefined,
+              dtick: planarXStep !== '' ? Number(planarXStep) : undefined,
+              direction: 'clockwise',
+              rotation: 90,
+              tickmode: 'array',
+              tickvals: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330],
+              ticktext: ['0°', '30°', '60°', '90°', '120°', '150°', '180°', '-150°','-120','-90','-60','-30'],
+            }
+          },
+        };
+      }
     };
 
     return (
@@ -1563,6 +1684,20 @@ function App() {
             >
               {planarAnnotate ? 'Hide Annotations' : 'Show Annotations'}
             </button>
+            <button 
+              onClick={togglePlanarCoordinateType} 
+              style={{ 
+                padding: '8px 16px',
+                fontSize: 14, 
+                background: planarCoordinateType === 'cartesian' ? '#0074D9' : '#f5f5f5',
+                color: planarCoordinateType === 'cartesian' ? 'white' : 'black',
+                border: '1px solid #ddd',
+                borderRadius: 4,
+                cursor: 'pointer'
+              }}
+            >
+              {planarCoordinateType === 'cartesian' ? 'Switch to Polar' : 'Switch to Cartesian'}
+            </button>
           </div>
         )}
         
@@ -1576,24 +1711,28 @@ function App() {
               {/* Plot area */}
               <div style={{ flex: '0 0 581px', width: 581, minWidth: 581, maxWidth: 581, height: 374, minHeight: 374, maxHeight: 374, background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
                 <Plot
-                  key={`pattern-cut-${planarPlotType}`}
+                  key={`pattern-cut-${planarPlotType}-${planarCoordinateType}`}
                   data={getPlanarPlotData()}
                   layout={getPlanarPlotLayout()}
             config={{ responsive: true, displayModeBar: true }}
           />
                 <div style={{ display: 'flex', gap: 4, marginTop: 16, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap', fontSize: 11 }}>
+                  {planarCoordinateType === 'cartesian' && (
+                    <>
             <label style={{ margin: 0 }}>
               X min:&nbsp;
-                    <input type="number" value={planarXMin} onChange={e => setPlanarXMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                        <input type="number" value={planarXMin} onChange={e => setPlanarXMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
             <label style={{ margin: 0 }}>
               X max:&nbsp;
-                    <input type="number" value={planarXMax} onChange={e => setPlanarXMax(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                        <input type="number" value={planarXMax} onChange={e => setPlanarXMax(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
             <label style={{ margin: 0 }}>
               X step:&nbsp;
-                    <input type="number" value={planarXStep} onChange={e => setPlanarXStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
+                        <input type="number" value={planarXStep} onChange={e => setPlanarXStep(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
             </label>
+                    </>
+                  )}
             <label style={{ margin: 0 }}>
               Y min:&nbsp;
                     <input type="number" value={planarYMin} onChange={e => setPlanarYMin(e.target.value)} style={{ width: 36, fontSize: 11, padding: '0 2px' }} />
