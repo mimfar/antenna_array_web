@@ -117,10 +117,13 @@ def serve(path):
 
 @app.route('/health')
 def health():
+    """Health check endpoint for deployment monitoring"""
     return jsonify({
-        'status': 'ok',
-        'environment': app.config.get('ENV', 'unknown')
-    }), 200
+        'status': 'healthy',
+        'environment': app.config.get('ENV', 'development'),
+        'cache_size': len(array_cache),
+        'cache_max_size': ARRAY_CACHE_MAX_SIZE
+    })
 
 # Configure CORS with secure settings
 CORS(app, 
@@ -278,6 +281,7 @@ limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=[config.RATE_LIMIT_DEFAULT],
+    storage_uri="memory://"  # Use in-memory storage explicitly
 )
 
 @app.errorhandler(RateLimitExceeded)

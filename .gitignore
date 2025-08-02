@@ -51,3 +51,8 @@ test_plotly.py
 .gitignore
 backend/test_linear_caching.py
 test_csp.py
+start.sh
+test_rate_limiting.py
+.gitignore
+render.yaml
+test_render_deployment.py
