@@ -3,6 +3,8 @@ from flask_cors import CORS
 import random
 import io
 import base64
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend to prevent threading issues
 import matplotlib.pyplot as plt
 from linear_array import LinearArray, db20
 from planar_array import PlanarArray
@@ -17,14 +19,25 @@ from flask_limiter.util import get_remote_address
 from flask_limiter.errors import RateLimitExceeded
 import logging
 from logging.handlers import RotatingFileHandler
+import secrets
 
 def generate_plot_image(fig):
-    """Generate base64 image from matplotlib figure"""
-    buf = io.BytesIO()
-    fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-    buf.seek(0)
-    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    """Convert matplotlib figure to base64 encoded PNG image"""
+    # Clear any existing plots to prevent state conflicts
+    plt.close('all')
+    
+    # Save figure to bytes buffer
+    img_buffer = io.BytesIO()
+    fig.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
+    img_buffer.seek(0)
+    
+    # Convert to base64
+    img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+    
+    # Clean up
     plt.close(fig)
+    img_buffer.close()
+    
     return img_base64
 
 def create_error_response(message, status_code=400, error_type="validation_error"):
@@ -230,21 +243,21 @@ def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,
         return {
             **base_response,
             'plot_type': '3d_polar',
-            'data': data
+            'data_polar3d': data
         }
         
     elif plot_type == 'contour':
-        # Generate plot image
-        
-        fig, ax = arr.pattern_contour()
-        img_base64 = generate_plot_image(fig)
+        # Return Plotly data instead of matplotlib image
+        contour_data = arr.get_contour_data(g_range=30)
         return {
             **base_response,
-            'plot': img_base64
+            'plot_type': 'contour',
+            'data_contour': contour_data
         }
 
     elif plot_type == 'polarsurf':
-        fig, ax = arr.polarsurf()
+        # Generate matplotlib image for polar surface
+        fig, ax = arr.polarsurf(g_range=30)
         img_base64 = generate_plot_image(fig)
         return {
             **base_response,
@@ -319,18 +332,42 @@ def analyze_linear_array():
     SLL = data.get('SLL', None)
     show_manifold = data.get('show_manifold', False)
     element_gain = data.get('element_gain', 0)
-    # Create LinearArray instance
-    arr = LinearArray(
-        
-        num_elem=num_elem,
-        element_spacing=element_spacing,
-        scan_angle=scan_angle,
-        element_pattern=element_pattern,
-        window=window,
-        SLL=SLL,
-        element_gain=element_gain,
-    )
-    AF = arr.calc_AF
+    
+    # Generate cache key for linear array
+    array_params = {
+        'num_elem': num_elem,
+        'element_spacing': element_spacing,
+        'scan_angle': scan_angle,
+        'element_pattern': element_pattern,
+        'window': window,
+        'SLL': SLL,
+        'element_gain': element_gain
+    }
+    array_key = get_array_key('linear', array_params)
+    
+    # Check if array already exists in cache
+    if array_key in array_cache:
+        # Use cached array
+        arr = array_cache[array_key]
+        app.logger.info(f"Using cached linear array for key: {array_key[:20]}...")
+    else:
+        # Create new LinearArray instance
+        arr = LinearArray(
+            num_elem=num_elem,
+            element_spacing=element_spacing,
+            scan_angle=scan_angle,
+            element_pattern=element_pattern,
+            window=window,
+            SLL=SLL,
+            element_gain=element_gain,
+        )
+        # Calculate array factor (expensive computation)
+        AF = arr.calc_AF
+        # Cache the array instance for future use
+        cache_array(array_key, arr)
+        app.logger.info(f"Created and cached new linear array for key: {array_key[:20]}...")
+    
+    # Calculate pattern parameters (this is fast since array is already computed)
     pattern_params = arr.calc_peak_sll_hpbw()
 
     # Calculate pattern data (same for both cartesian and polar plots)
@@ -498,14 +535,63 @@ def analyze_planar_array():
     app.logger.info(f"Planar array analysis successful for array_type={array_type}, scan_angle={scan_angle}")
     return jsonify(response)
 
+# Generate a secure nonce for CSP
+def generate_nonce():
+    """Generate a secure nonce for Content Security Policy"""
+    return secrets.token_urlsafe(16)
+
+def generate_csp_hash(content):
+    """Generate a SHA-256 hash for CSP hash-based allowlisting"""
+    return hashlib.sha256(content.encode('utf-8')).digest().hex()
+
+def build_csp_header(config, nonce):
+    """Build Content Security Policy header from configuration"""
+    if not config.CSP_ENABLED:
+        return None
+    
+    csp_parts = [
+        "default-src 'self'",
+        f"script-src {' '.join(config.CSP_SCRIPT_SRC).replace('{nonce}', nonce)}",
+        f"style-src {' '.join(config.CSP_STYLE_SRC)}",
+        f"img-src {' '.join(config.CSP_IMG_SRC)}",
+        f"connect-src {' '.join(config.CSP_CONNECT_SRC)}",
+        f"font-src {' '.join(config.CSP_FONT_SRC)}",
+        f"object-src {' '.join(config.CSP_OBJECT_SRC)}",
+        f"base-uri {' '.join(config.CSP_BASE_URI)}",
+        f"form-action {' '.join(config.CSP_FORM_ACTION)}",
+        f"frame-ancestors {' '.join(config.CSP_FRAME_ANCESTORS)}",
+        "upgrade-insecure-requests"
+    ]
+    
+    # Add report-uri if configured
+    if config.CSP_REPORT_URI:
+        csp_parts.append(f"report-uri {config.CSP_REPORT_URI}")
+    
+    return "; ".join(csp_parts)
+
 @app.after_request
 def add_security_headers(response):
     """Add security headers to all responses"""
+    # Generate a unique nonce for this request
+    nonce = generate_nonce()
+    
+    # Store nonce in response for potential use in templates
+    response.headers['X-CSP-Nonce'] = nonce
+    
+    # Build Content Security Policy if enabled
+    if config.CSP_ENABLED:
+        csp_header = build_csp_header(config, nonce)
+        if csp_header:
+            header_name = 'Content-Security-Policy-Report-Only' if config.CSP_REPORT_ONLY else 'Content-Security-Policy'
+            response.headers[header_name] = csp_header
+    
+    # Other security headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.plot.ly; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://forms.gle;"
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    
     return response
 
 if __name__ == '__main__':

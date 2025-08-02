@@ -194,6 +194,42 @@ function App() {
   useEffect(() => {
     realtimeRef.current = realtime;
   }, [realtime]);
+  
+  // Request management for preventing overlapping requests
+  const [currentAbortController, setCurrentAbortController] = useState(null);
+  const [debounceTimers, setDebounceTimers] = useState({});
+
+  // Utility functions for request management
+  const cancelCurrentRequest = () => {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      setCurrentAbortController(null);
+    }
+  };
+
+  const createNewRequest = () => {
+    cancelCurrentRequest();
+    const newController = new AbortController();
+    setCurrentAbortController(newController);
+    return newController;
+  };
+
+  const debounceAnalysis = (analysisFunction, delay = 300) => {
+    // Clear existing timer for this analysis type
+    const timerKey = analysisFunction.name;
+    if (debounceTimers[timerKey]) {
+      clearTimeout(debounceTimers[timerKey]);
+    }
+    
+    // Set new timer
+    const newTimer = setTimeout(() => {
+      analysisFunction();
+      setDebounceTimers(prev => ({ ...prev, [timerKey]: null }));
+    }, delay);
+    
+    setDebounceTimers(prev => ({ ...prev, [timerKey]: newTimer }));
+  };
+
   // Helper for input change with realtime analysis
   const handleLinearInputChange = (handler) => {
     handler();
@@ -232,6 +268,8 @@ function App() {
    * Analyzes linear array parameters and returns pattern data
    */
   const analyzeLinearArray = async () => {
+    const controller = createNewRequest();
+    
     setLoading(true);
     setError('');
     setResult(null);
@@ -246,9 +284,9 @@ function App() {
       
       if (!validation.isValid) {
         setError(`Please fix the following issues:\n${validation.errors.join('\n')}`);
-      setLoading(false);
-      return;
-    }
+        setLoading(false);
+        return;
+      }
     
       const API_URL = process.env.REACT_APP_API_URL || '';
 
@@ -265,7 +303,8 @@ function App() {
           SLL: windowType === 'SLL' ? Number(SLL) : null,
           plot_type: plotType,
           show_manifold: true
-        })
+        }),
+        signal: controller.signal
       });
       
       if (!response.ok) {
@@ -276,6 +315,12 @@ function App() {
       const data = await response.json();
       setResult(data);
     } catch (err) {
+      // Don't show error if request was cancelled
+      if (err.name === 'AbortError') {
+        console.log('Linear array analysis cancelled');
+        return;
+      }
+      
       console.error('Linear array analysis error:', err);
       setError(err.message || 'Failed to analyze linear array. Please try again.');
     } finally {
@@ -288,6 +333,7 @@ function App() {
    * Supports rectangular, triangular, and circular array configurations
    */
   const analyzePlanarArray = async () => {
+    const controller = createNewRequest();
     
     setLoading(true);
     setError('');
@@ -389,7 +435,8 @@ function App() {
           SLL: planarWindowType === 'SLL' ? Number(planarSLL) : null,
           plot_type: planarPlotType,
           cut_angle: Number(planarCutAngle)
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -400,6 +447,12 @@ function App() {
       const data = await response.json();
       setResult(data);
     } catch (err) {
+      // Don't show error if request was cancelled
+      if (err.name === 'AbortError') {
+        console.log('Planar array analysis cancelled');
+        return;
+      }
+      
       console.error('Planar array analysis error:', err);
       setError(err.message || 'Failed to analyze planar array. Please try again.');
     } finally {
@@ -536,7 +589,7 @@ function App() {
       elementSpacing !== '' && !isNaN(Number(elementSpacing)) && Number(elementSpacing) > 0 &&
       scanAngle !== '' && !isNaN(Number(scanAngle))
     ) {
-      analyzeLinearArray();
+      debounceAnalysis(analyzeLinearArray, 100);
     }
     // Optionally, you could clear the result or show a message if invalid
   }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern, plotType, activeTab, realtime]);
@@ -551,7 +604,7 @@ function App() {
       scanAngle !== '' && !isNaN(Number(scanAngle)) &&
       elementGain !== '' && !isNaN(Number(elementGain))
     ) {
-      analyzeLinearArray();
+      debounceAnalysis(analyzeLinearArray, 100);
     }
   }, [elementGain,realtime]);
 
@@ -580,7 +633,7 @@ function App() {
       ) {
         return;
       }
-      analyzePlanarArray();
+      debounceAnalysis(analyzePlanarArray, 300);
     }
     
     // Validation for circular arrays
@@ -593,10 +646,23 @@ function App() {
       if (radiiParts.length === 0 || radiiParts.some(val => isNaN(Number(val)) || Number(val) <= 0)) return;
       // Validate scan angles
       if (planarScanAngle[0] === '' || isNaN(Number(planarScanAngle[0])) || planarScanAngle[1] === '' || isNaN(Number(planarScanAngle[1]))) return;
-      analyzePlanarArray();
+      debounceAnalysis(analyzePlanarArray, 300);
     }
   }
   }, [activeTab, planarArrayType, planarNumElem, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarScanAngle, planarElementPattern, planarWindow, planarSLL, planarWindowType, planarPlotType, planarCutAngle, realtime]);
+
+  // Cleanup effect to cancel pending requests and clear timers
+  useEffect(() => {
+    return () => {
+      // Cancel any pending requests
+      cancelCurrentRequest();
+      
+      // Clear any pending debounce timers
+      Object.values(debounceTimers).forEach(timer => {
+        if (timer) clearTimeout(timer);
+      });
+    };
+  }, []);
 
   // Track the last auto-set yMax to avoid overriding user changes
   useEffect(() => {
@@ -615,10 +681,10 @@ function App() {
     // Only update yMax if it is empty or matches the previous auto-set value
     // This allows users to customize Ymax while still providing good defaults
     if (!axisLocked && (yMax === '' || yMax === autoYMax)) {
-      setYMax(String(largestYMax));
-      setAutoYMax(String(largestYMax));
+      setYMax(largestYMax);
+      setAutoYMax(largestYMax);
     }
-  }, [traces, result, showCurrent, yMax, autoYMax]);
+  }, [traces, showCurrent, result, axisLocked, yMax, autoYMax]);
 
   // Track the last auto-set yMax for planar arrays to avoid overriding user changes
   useEffect(() => {
@@ -2009,63 +2075,143 @@ function App() {
           }}
           config={{ responsive: true, displayModeBar: true }}
         />
-        ) : planarPlotType === 'polar3d' && result.data ? (
+        ) : planarPlotType === 'polar3d' && result.data_polar3d ? (
           // Render native Plotly 3D polar plot
           <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
-            <Plot
-              key={`3d-polar-${planarPlotType}`}
-              data={[
-                {
-                  type: 'surface',
-                  x: result.data.x,
-                  y: result.data.y,
-                  z: result.data.z,
-                  colorscale: 'Viridis',
-                  opacity: 0.8,
-                  showscale: true,
-                  colorbar: { title: 'Gain (dB)' }
-                },
-                {
-                  type: 'scatter3d',
-                  x: result.data.array_x,
-                  y: result.data.array_y,
-                  z: Array(result.data.array_x.length).fill(0),
-                  mode: 'markers',
-                  marker: { color: 'red', size: 3 },
-                  name: 'Array Elements',
-                  showlegend: false
-                }
-              ]}
-              layout={{
-                width: 600,
-                height: 500,
-                title: '3D Polar Array Pattern',
-                scene: {
-                  camera: {
-                    eye: { x: 1.5, y: 1.5, z: 1.5 }
-                  },
-                  xaxis: { title: {text:''}, showgrid: false, zeroline: false ,showticklabels: false},
-                  yaxis: { title: {text:''}, showgrid: false, zeroline: false ,showticklabels: false},
-                  zaxis: { title: {text:''}, showgrid: false, showline: false ,showticklabels: false}
-                },
-                margin: { l: 0, r: 0, t: 50, b: 0 }
-              }}
-              config={{ responsive: true, displayModeBar: true }}
+            {(() => {
+              // Safety check for complete polar3d data structure
+              if (!result.data_polar3d.array_x || !result.data_polar3d.array_y || !result.data_polar3d.x || !result.data_polar3d.y || !result.data_polar3d.z) {
+                return <div>⏳ Loading 3D polar data...</div>;
+              }
+              
+              return (
+                <Plot
+                  key={`3d-polar-${planarPlotType}`}
+                  data={[
+                    {
+                      type: 'surface',
+                      x: result.data_polar3d.x,
+                      y: result.data_polar3d.y,
+                      z: result.data_polar3d.z,
+                      colorscale: 'Viridis',
+                      opacity: 0.8,
+                      showscale: true,
+                      colorbar: { title: 'Gain (dB)' }
+                    },
+                    {
+                      type: 'scatter3d',
+                      x: result.data_polar3d.array_x,
+                      y: result.data_polar3d.array_y,
+                      z: Array(result.data_polar3d.array_x.length).fill(0),
+                      mode: 'markers',
+                      marker: { color: 'red', size: 3 },
+                      name: 'Array Elements',
+                      showlegend: false
+                    }
+                  ]}
+                  layout={{
+                    width: 600,
+                    height: 500,
+                    title: '3D Polar Array Pattern',
+                    scene: {
+                      camera: {
+                        eye: { x: 1.5, y: 1.5, z: 1.5 }
+                      },
+                      xaxis: { title: {text:''}, showgrid: false, zeroline: false ,showticklabels: false},
+                      yaxis: { title: {text:''}, showgrid: false, zeroline: false ,showticklabels: false},
+                      zaxis: { title: {text:''}, showgrid: false, showline: false ,showticklabels: false}
+                    },
+                    margin: { l: 0, r: 0, t: 50, b: 0 }
+                  }}
+                  config={{ responsive: true, displayModeBar: true }}
+                />
+              );
+            })()}
+          </div>
+        ) : planarPlotType === 'contour' && result.data_contour ? (
+          // Render Plotly contour plot
+          <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
+            {(() => {
+              // Debug: Log the data structure
+              // console.log('Contour data:', result.data);
+              const contourData = result.data_contour;
+              
+              // Check if data exists and has the right structure
+              if (!contourData.theta || !contourData.phi || !contourData.intensity) {
+                return <div>❌ Invalid contour data structure</div>;
+              }
+              
+              // Data is now clean 1D vectors + 2D intensity matrix
+              const x = contourData.phi;      // 1D phi vector
+              const y = contourData.theta;    // 1D theta vector
+              const z = contourData.intensity; // 2D intensity matrix
+              
+              // Transpose Z matrix to match Plotly's expected format
+              const zTransposed = z[0].map((_, colIndex) => z.map(row => row[colIndex]));
+              
+              
+              return (
+                <Plot
+                  key={`contour-${planarPlotType}`}
+                  data={[{
+                    type: 'contour',
+                    x: x,
+                    y: y,
+                    z: zTransposed,
+                    colorscale: 'Hot',
+                    contours: {
+                      coloring: 'heatmap',
+                      showlabels: true
+                    },
+                    colorbar: {
+                      title: 'Gain (dB)',
+                      titleside: 'right'
+                    },
+                    zmin: contourData.peak - contourData.g_range,
+                    zmax: contourData.peak
+                  }]}
+                  layout={{
+                    width: 600,
+                    height: 500,
+                    title: 'Antenna Array Pattern Contour',
+                    xaxis: {
+                      title: 'φ (degrees)',
+                      range: [-180, 180],
+                      type: 'linear',
+                      autorange: false,
+                      constrain: 'domain',
+                      tickmode: 'array',
+                      tickvals: [-180, -150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150, 180],
+                      ticktext: ['-180°', '-150°', '-120°', '-90°', '-60°', '-30°', '0°', '30°', '60°', '90°', '120°', '150°', '180°']
+                    },
+                    yaxis: {
+                      title: 'θ (degrees)',
+                      range: [0, 180],
+                      type: 'linear',
+                      autorange: false,
+                      constrain: 'domain',
+                      tickmode: 'array',
+                      tickvals: [0, 30, 60, 90, 120, 150, 180],
+                      ticktext: ['0°', '30°', '60°', '90°', '120°', '150°', '180°']
+                    },
+                    plot_bgcolor: '#fff',
+                    paper_bgcolor: '#fff'
+                  }}
+                  config={{ responsive: true, displayModeBar: true }}
+                />
+              );
+            })()}
+          </div>
+        ) : planarPlotType === 'polarsurf' && result.plot ? (
+          // Render matplotlib polar surface image
+          <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
+            <img 
+              src={`data:image/png;base64,${result.plot}`} 
+              alt="Polar Surface Pattern"
+              style={{ width: '600px', height: '500px', objectFit: 'contain' }}
             />
           </div>
-      ) : planarPlotType === 'contour' && result.plot ? (
-        <img
-          src={`data:image/png;base64,${result.plot}`}
-          alt="Contour Plot"
-          style={{ maxWidth: '50%', border: '1px solid #ccc', borderRadius: 8 }}
-        />
-      ) : planarPlotType === 'polarsurf' && result.plot ? (
-        <img
-          src={`data:image/png;base64,${result.plot}`}
-          alt="Polar Surface Plot"
-          style={{ maxWidth: '50%', border: '1px solid #ccc', borderRadius: 8 }}
-        />
-      ) : null}
+        ) : null}
       
         {/* Simple parameter display for non-pattern-cut plots */}
         {result && (result.gain !== undefined || result.manifold_x) && planarPlotType !== 'pattern_cut' && (
@@ -2108,7 +2254,7 @@ function App() {
           margin: 0, 
           fontWeight: 700
         }}>
-          Antenna Array Analysis Tool
+          Antenna Array Analysis
         </h1>
         <p style={{ 
           fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', 
@@ -2118,7 +2264,7 @@ function App() {
           marginLeft: 'auto',
           marginRight: 'auto'
         }}>
-          Analyze linear and planar antenna arrays with real-time visualization
+          {/* Analyze linear and planar antenna arrays with real-time visualization */}
         </p>
       </div>
       

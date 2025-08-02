@@ -469,24 +469,17 @@ class PlanarArray():
         """Return contour data for Plotly visualization"""
         G = 20 * np.log10(np.abs(self.AF))
         
-        # Transform data for full theta/phi range
-        G11 = np.flip(np.roll(G[1:,1:],int(len(self.phi)/2),axis=0))
-        G12 = np.flip(G[1:,:],axis=0)
-        G21 = np.flip(np.roll(G[:,1:],int(len(self.phi)/2),axis=0),axis=1)
-        G22 = G
-        GT = np.vstack((np.hstack((G11,G12)),np.hstack((G21,G22))))
-        
-        thetaT = np.hstack((-np.flip(self.theta[1:]), self.theta))
-        phiT = np.hstack((-np.flip(self.phi[1:]), self.phi))
-        [TT,PT] = np.meshgrid(thetaT,phiT)
-        
+        GT = np.roll(G, int(len(self.phi)/2), axis=0)
+        thetaT = self.theta
+        phiT = self.phi - 180
+
         peak = np.max(GT)
         GT[GT < (peak - g_range)] = peak - g_range
         
         return {
-            'theta': TT.tolist(),
-            'phi': PT.tolist(),
-            'intensity': GT.tolist(),
+            'theta': thetaT.tolist(),  # 1D vector
+            'phi': phiT.tolist(),      # 1D vector
+            'intensity': GT.tolist(),  # 2D matrix
             'peak': float(peak),
             'g_range': g_range
         }
@@ -559,7 +552,7 @@ class PlanarArray():
 
         plt.axis('equal')
         plt.axis('off')
-        CS3 = plt.contourf(X,Y,G,30,cmap=cm.jet,extend='min',vmin=peak-g_range,vmax=peak)
+        CS3 = plt.contourf(X,Y,G,30,cmap=cm.hot,extend='min',vmin=peak-g_range,vmax=peak)
         # CS3.cmap.set_under('blue')
 
         plt.colorbar()
@@ -582,9 +575,9 @@ class PlanarArray():
         G[G < (peak - g_range)] = peak - g_range - 1
         
         return {
-            'x': X.tolist(),
-            'y': Y.tolist(),
-            'intensity': G.tolist(),
+            'x': X.tolist(),                 # 2D matrix of x coordinates
+            'y': Y.tolist(),                 # 2D matrix of y coordinates
+            'intensity': G.tolist(),         # 2D matrix
             'peak': float(peak),
             'g_range': g_range
         }
@@ -628,4 +621,4 @@ class PlanarArray():
         ax.text(0,rat,0,'y',color='red')
         ax.text(0,0,rat,'z',color='red')
         ax.view_init(elev=24, azim=25)
-        fig.colorbar(cm.ScalarMappable(norm=plt.Normalize(vmin=peak-r_range,vmax=peak), cmap='jet'),shrink=0.5,ax=ax)
+        fig.colorbar(cm.ScalarMappable(norm=plt.Normalize(vmin=peak-r_range,vmax=peak), cmap='hot'),shrink=0.5,ax=ax)

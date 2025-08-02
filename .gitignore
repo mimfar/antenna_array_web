@@ -43,3 +43,11 @@ test_scripts/frontend_test_checklist.md
 test_scripts/run_quick_tests.sh
 test_scripts/run_tests.py
 TESTING_SUMMARY.md
+debug_csp.py
+test_caching_performance.py
+.gitignore
+test_plotly.py
+.gitignore
+.gitignore
+backend/test_linear_caching.py
+test_csp.py

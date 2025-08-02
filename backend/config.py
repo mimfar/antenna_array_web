@@ -40,6 +40,22 @@ class Config:
     RATE_LIMIT_DEFAULT = os.environ.get('RATE_LIMIT_DEFAULT', '3600 per hour')
     RATE_LIMIT_LINEAR = os.environ.get('RATE_LIMIT_LINEAR', '60 per minute')
     RATE_LIMIT_PLANAR = os.environ.get('RATE_LIMIT_PLANAR', '60 per minute')
+    
+    # Content Security Policy Configuration
+    CSP_ENABLED = os.environ.get('CSP_ENABLED', 'true').lower() == 'true'
+    CSP_REPORT_ONLY = os.environ.get('CSP_REPORT_ONLY', 'false').lower() == 'true'
+    CSP_REPORT_URI = os.environ.get('CSP_REPORT_URI', '')
+    
+    # CSP Directives - Use lists instead of split() to preserve quoted strings
+    CSP_SCRIPT_SRC = ["'self'", "'nonce-{nonce}'", "https://cdn.plot.ly"]
+    CSP_STYLE_SRC = ["'self'", "'unsafe-inline'"]  # unsafe-inline needed for React styles
+    CSP_IMG_SRC = ["'self'", "data:", "https:"]
+    CSP_CONNECT_SRC = ["'self'", "https://forms.gle"]
+    CSP_FONT_SRC = ["'self'"]
+    CSP_OBJECT_SRC = ["'none'"]
+    CSP_BASE_URI = ["'self'"]
+    CSP_FORM_ACTION = ["'self'"]
+    CSP_FRAME_ANCESTORS = ["'none'"]
 
 class DevelopmentConfig(Config):
     """Development configuration"""
