@@ -23,22 +23,30 @@ import secrets
 
 def generate_plot_image(fig):
     """Convert matplotlib figure to base64 encoded PNG image"""
-    # Clear any existing plots to prevent state conflicts
-    plt.close('all')
-    
-    # Save figure to bytes buffer
-    img_buffer = io.BytesIO()
-    fig.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
-    img_buffer.seek(0)
-    
-    # Convert to base64
-    img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
-    
-    # Clean up
-    plt.close(fig)
-    img_buffer.close()
-    
-    return img_base64
+    try:
+        # Clear any existing plots to prevent state conflicts
+        plt.close('all')
+        
+        # Save figure to bytes buffer
+        img_buffer = io.BytesIO()
+        fig.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
+        img_buffer.seek(0)
+        
+        # Convert to base64
+        img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+        
+        return img_base64
+    finally:
+        # Ensure cleanup happens even if there's an error
+        try:
+            plt.close(fig)
+            img_buffer.close()
+        except:
+            pass
+        
+        # Force garbage collection for matplotlib objects
+        import gc
+        gc.collect()
 
 def create_error_response(message, status_code=400, error_type="validation_error"):
     """Create standardized error response"""
@@ -117,13 +125,10 @@ def serve(path):
 
 @app.route('/health')
 def health():
-    """Health check endpoint for deployment monitoring"""
     return jsonify({
-        'status': 'healthy',
-        'environment': app.config.get('ENV', 'development'),
-        'cache_size': len(array_cache),
-        'cache_max_size': ARRAY_CACHE_MAX_SIZE
-    })
+        'status': 'ok',
+        'environment': app.config.get('ENV', 'unknown')
+    }), 200
 
 # Configure CORS with secure settings
 CORS(app, 
@@ -146,16 +151,65 @@ def cache_array(key, arr):
     array_cache[key] = arr
     # If cache exceeds max size, remove the oldest item
     if len(array_cache) > ARRAY_CACHE_MAX_SIZE:
-        evicted_key, _ = array_cache.popitem(last=False)  # Remove least recently used
+        evicted_key, evicted_arr = array_cache.popitem(last=False)  # Remove least recently used
         app.logger.info(f"Cache eviction: removed key {evicted_key[:20]}... (cache size: {len(array_cache)})")
+        
+        # Explicitly clean up NumPy arrays in the evicted object
+        if hasattr(evicted_arr, 'X'):
+            del evicted_arr.X
+        if hasattr(evicted_arr, 'Y'):
+            del evicted_arr.Y
+        if hasattr(evicted_arr, 'AF'):
+            del evicted_arr.AF
+        if hasattr(evicted_arr, 'theta'):
+            del evicted_arr.theta
+        if hasattr(evicted_arr, 'phi'):
+            del evicted_arr.phi
+        if hasattr(evicted_arr, 'I'):
+            del evicted_arr.I
+        if hasattr(evicted_arr, 'P'):
+            del evicted_arr.P
+        
+        # Delete the array object itself
+        del evicted_arr
     
     app.logger.debug(f"Cache size: {len(array_cache)}/{ARRAY_CACHE_MAX_SIZE}")
+    
+    # Periodic cache cleanup to prevent memory accumulation
+    if len(array_cache) % 5 == 0:  # More frequent cleanup
+        import gc
+        gc.collect()
 
 def get_array_key(array_type, array_params):
     """Generate a unique key for array caching"""
     # Create a hash of the array parameters
     param_str = json.dumps(array_params, sort_keys=True)
     return f"{array_type}_{hashlib.md5(param_str.encode()).hexdigest()}"
+
+def cleanup_array_objects():
+    """Clean up NumPy arrays from all cached objects"""
+    import gc
+    
+    for key, arr in list(array_cache.items()):
+        # Clean up NumPy arrays
+        if hasattr(arr, 'X'):
+            del arr.X
+        if hasattr(arr, 'Y'):
+            del arr.Y
+        if hasattr(arr, 'AF'):
+            del arr.AF
+        if hasattr(arr, 'theta'):
+            del arr.theta
+        if hasattr(arr, 'phi'):
+            del arr.phi
+        if hasattr(arr, 'I'):
+            del arr.I
+        if hasattr(arr, 'P'):
+            del arr.P
+    
+    # Force garbage collection
+    gc.collect()
+    app.logger.info("Array objects cleaned up")
 
 def validate_array_parameters(array_type, num_elem, element_spacing, radius=None):
     """Validate array parameters based on array type"""
@@ -281,7 +335,6 @@ limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=[config.RATE_LIMIT_DEFAULT],
-    storage_uri="memory://"  # Use in-memory storage explicitly
 )
 
 @app.errorhandler(RateLimitExceeded)

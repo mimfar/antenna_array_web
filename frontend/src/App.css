@@ -87,3 +87,88 @@ textarea:focus {
     border: 2px solid #000;
   }
 }
+
+/* Large screen improvements */
+@media (min-width: 1400px) {
+  .App {
+    padding: 32px;
+  }
+  
+  /* Ensure plots scale with screen size */
+  .plot-container {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* Ensure plots are responsive */
+.plot-container {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Make the main content area scale with screen size */
+.main-content {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* New proportional layout styles */
+.form-container {
+  flex: 0 0 25% !important;
+  min-width: 300px !important;
+  max-width: 450px !important;
+}
+
+.plot-container {
+  flex: 0 0 55% !important;
+  min-width: 400px !important;
+}
+
+.legend-container {
+  flex: 0 0 20% !important;
+  min-width: 200px !important;
+  max-width: 350px !important;
+}
+
+/* Ensure plots scale properly within their containers */
+.plot-container .js-plotly-plot {
+  width: 100% !important;
+  height: auto !important;
+}
+
+.plot-container .plotly {
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* Maintain 2:3 aspect ratio for main plots */
+.plot-container .js-plotly-plot .plotly {
+  aspect-ratio: 3/2 !important;
+  height: auto !important;
+}
+
+/* Responsive behavior for different screen sizes */
+@media (min-width: 1920px) {
+  .form-container {
+    max-width: 500px !important;
+  }
+  
+  .legend-container {
+    max-width: 400px !important;
+  }
+}
+
+@media (max-width: 1200px) {
+  .form-container {
+    max-width: 400px !important;
+  }
+  
+  .plot-container {
+    min-width: 350px !important;
+  }
+  
+  .legend-container {
+    max-width: 300px !important;
+  }
+}

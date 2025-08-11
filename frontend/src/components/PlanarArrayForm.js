@@ -65,7 +65,7 @@ const PlanarArrayForm = ({
             id="array-type"
             value={arrayType} 
             onChange={e => handlePlanarInputChange(() => setArrayType(e.target.value))} 
-            style={{ width: 110, marginLeft: 8 }}
+            style={{ width: '100%', maxWidth: '120px', marginLeft: 8 }}
           >
             <option value="rect">Rectangular</option>
             <option value="tri">Triangular</option>
@@ -450,7 +450,7 @@ const PlanarArrayForm = ({
             id="plot-type-planar"
             value={plotType} 
             onChange={e => handlePlanarInputChange(() => setPlotType(e.target.value))} 
-            style={{ width: 110, marginLeft: 8 }}
+            style={{ width: '100%', maxWidth: '120px', marginLeft: 8 }}
           >
             <option value="pattern_cut">Pattern Cut</option>
             <option value="manifold">Manifold</option>
@@ -485,7 +485,7 @@ const PlanarArrayForm = ({
                 }
               }}
               required
-              style={{ width: 60, marginLeft: 8 }}
+              style={{ width: '100%', maxWidth: '120px', marginLeft: 8 }}
               aria-describedby="cut-angle-help"
             />
           </label>
@@ -530,7 +530,7 @@ const PlanarArrayForm = ({
                 id="window-function-planar"
                 value={window} 
                 onChange={e => handlePlanarInputChange(() => setWindow(e.target.value))} 
-                style={{ width: 110, marginLeft: 8 }} 
+                style={{ width: '100%', maxWidth: '120px', marginLeft: 8 }} 
                 disabled={arrayType === 'tri' || arrayType === 'circ'}
               >
                 <option value="">No Window</option>
