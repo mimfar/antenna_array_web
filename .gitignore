@@ -32,6 +32,12 @@ yarn-error.log*
 # Test coverage
 coverage/
 test_planar_timing.py
+
+# Test scripts and results
+test_scripts/
+*.json
+test_*.py
+
 # Misc
 *.log.*
 *.log
@@ -39,28 +45,9 @@ test_planar_timing.py
 project_architecture_diagram.txt
 project_architecture_diagram.txt
 TEST_PLAN.md
-test_scripts/frontend_test_checklist.md
-test_scripts/run_quick_tests.sh
-test_scripts/run_tests.py
 TESTING_SUMMARY.md
 debug_csp.py
-test_caching_performance.py
 .gitignore
-test_plotly.py
-.gitignore
-.gitignore
-backend/test_linear_caching.py
-test_csp.py
 start.sh
-test_rate_limiting.py
-.gitignore
 render.yaml
-test_render_deployment.py
 test.sh
-extreme_load_results.json
-test_scripts/memory_test_results.json
-test_scripts/test_extreme_load.py
-test_scripts/test_linear_caching.py
-test_scripts/test_memory_usage.py
-test_scripts/test_numpy_memory.py
-test_scripts/numpy_memory_results.json

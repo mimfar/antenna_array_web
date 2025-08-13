@@ -1966,7 +1966,7 @@ function App() {
                   }]}
               layout={{
                     width: undefined,
-                    height: 400,
+                    height: Math.round(600 * (2/3)), // 2:3 aspect ratio (400px)
                 margin: { l: 50, r: 20, t: 30, b: 50 },
                     title: { text: 'Array Manifold', font: { size: 16 } },
                 xaxis: {
@@ -2083,7 +2083,7 @@ function App() {
                   ]}
                   layout={{
                     width: undefined,
-                    height: 500,
+                    height: Math.round(600 * (2/3)), // 2:3 aspect ratio (400px)
                     title: '3D Polar Array Pattern',
                     scene: {
                       camera: {
@@ -2201,7 +2201,7 @@ function App() {
                   }]}
                   layout={{
                     width: undefined,
-                    height: 500,
+                    height: Math.round(600 * (2/3)), // 2:3 aspect ratio (400px)
                     title: 'Antenna Array Pattern Contour',
                     xaxis: {
                       title: 'φ (degrees)',
@@ -2249,7 +2249,13 @@ function App() {
             <img 
               src={`data:image/png;base64,${result.plot}`} 
               alt="Polar Surface Pattern"
-                  style={{ width: '100%', maxWidth: '800px', height: 'auto', objectFit: 'contain' }}
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: '800px', 
+                    height: 'auto', 
+                    objectFit: 'contain',
+                    aspectRatio: '3/2' // Maintain 2:3 aspect ratio
+                  }}
                 />
                 
                 {/* Pattern parameters table */}

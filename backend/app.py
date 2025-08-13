@@ -21,6 +21,12 @@ import logging
 from logging.handlers import RotatingFileHandler
 import secrets
 
+def log_cache_memory_status():
+    """Log current cache memory usage"""
+    array_count = len(array_cache)
+    app.logger.info(f"Cache status: {array_count} arrays")
+    return array_count
+
 def generate_plot_image(fig):
     """Convert matplotlib figure to base64 encoded PNG image"""
     try:
@@ -83,32 +89,94 @@ if app.config.get('ENV') == 'production':
     app.logger.info("Production mode enabled - debug and testing disabled")
 
 # Set up logging
-if not os.path.exists('logs'):
-    os.mkdir('logs')
+try:
+    if not os.path.exists('logs'):
+        os.makedirs('logs', exist_ok=True)
+        print(f"Created logs directory: {os.path.abspath('logs')}")
 
-file_handler = RotatingFileHandler(
-    config.LOG_FILE, 
-    maxBytes=config.LOG_MAX_SIZE, 
-    backupCount=config.LOG_BACKUP_COUNT
-)
-file_handler.setLevel(getattr(logging, config.LOG_LEVEL))
-formatter = logging.Formatter(
-    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-)
-file_handler.setFormatter(formatter)
-app.logger.addHandler(file_handler)
+    # Check if we can write to logs directory
+    test_file = os.path.join('logs', 'test_write.log')
+    try:
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        print("✅ Logs directory is writable")
+    except Exception as e:
+        print(f"❌ Cannot write to logs directory: {e}")
+        raise
+
+    file_handler = RotatingFileHandler(
+        config.LOG_FILE, 
+        maxBytes=config.LOG_MAX_SIZE, 
+        backupCount=config.LOG_BACKUP_COUNT
+    )
+    file_handler.setLevel(getattr(logging, config.LOG_LEVEL))
+    formatter = logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    )
+    file_handler.setFormatter(formatter)
+    
+    # Clear existing handlers to prevent duplicate logging
+    # Flask comes with default handlers that would cause duplicate log entries
+    app.logger.handlers.clear()
+    
+    app.logger.addHandler(file_handler)
+    print(f"✅ File logging configured: {config.LOG_FILE}")
+
+except Exception as e:
+    print(f"❌ Failed to set up file logging: {e}")
+    print("⚠️  Continuing with console logging only...")
 
 # Add console logging for cloud deployment
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(getattr(logging, config.LOG_LEVEL))
 stream_handler.setFormatter(formatter)
 app.logger.addHandler(stream_handler)
+print("✅ Console logging configured")
+
+# Test memory monitoring logging (AFTER logging setup)
+app.logger.info("🧠 Memory monitoring system initialized")
+app.logger.info(f"Current log level: {app.logger.level}")
+app.logger.info(f"Log file: {config.LOG_FILE}")
+app.logger.info(f"Log level from config: {config.LOG_LEVEL}")
+
+# Test file logging specifically
+try:
+    app.logger.info("📝 Testing file logging...")
+    print("✅ File logging test successful")
+except Exception as e:
+    print(f"❌ File logging test failed: {e}")
 
 # 
 @app.route('/test')
 def test():
     return "Flask is working!"
 
+@app.route('/test-memory')
+def test_memory():
+    """Test endpoint to verify memory monitoring is working"""
+    app.logger.info("🧪 Memory monitoring test endpoint called")
+    
+    # Test memory monitoring function
+    try:
+        # Create a simple test array
+        import numpy as np
+        test_array = np.array([[1, 2, 3], [4, 5, 6]])
+        
+        # Test successful
+        app.logger.info("✅ Memory monitoring test successful")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Memory monitoring is working',
+            'test_array_size': test_array.shape
+        })
+    except Exception as e:
+        app.logger.error(f"❌ Memory monitoring test failed: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Memory monitoring test failed: {str(e)}'
+        }), 500
 
 
 @app.route('/', defaults={'path': ''})
@@ -130,6 +198,37 @@ def health():
         'environment': app.config.get('ENV', 'unknown')
     }), 200
 
+@app.route('/api/memory-status')
+def memory_status():
+    """Get current memory status including cache information"""
+    try:
+        import psutil
+        import os
+        process = psutil.Process(os.getpid())
+        process_memory = process.memory_info()
+        cache_count = log_cache_memory_status()
+        system_memory = psutil.virtual_memory()
+        return jsonify({
+            'process_memory': {
+                'rss_mb': process_memory.rss / 1024 / 1024,
+                'vms_mb': process_memory.vms / 1024 / 1024,
+                'percent': process.memory_percent()
+            },
+            'cache': {
+                'array_count': cache_count,
+                'max_size': ARRAY_CACHE_MAX_SIZE
+            },
+            'system_memory': {
+                'total_mb': system_memory.total / 1024 / 1024,
+                'available_mb': system_memory.available / 1024 / 1024,
+                'used_mb': system_memory.used / 1024 / 1024,
+                'percent': system_memory.percent
+            }
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting memory status: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # Configure CORS with secure settings
 CORS(app, 
      origins=config.CORS_ORIGINS,
@@ -148,11 +247,31 @@ def cache_array(key, arr):
     else:
         app.logger.debug(f"Cache miss for key: {key[:20]}...")
     
+    # Log memory usage before caching
+    try:
+        # Memory logging removed for cleaner code
+        pass
+    except Exception as e:
+        app.logger.warning(f"Error in cache logging: {e}")
+    
     array_cache[key] = arr
+    
     # If cache exceeds max size, remove the oldest item
     if len(array_cache) > ARRAY_CACHE_MAX_SIZE:
+        # Log total cache memory before eviction
+        total_cache_memory = log_cache_memory_status()
+        app.logger.info(f"Cache full - Total memory before eviction: {total_cache_memory}MB")
+        
         evicted_key, evicted_arr = array_cache.popitem(last=False)  # Remove least recently used
         app.logger.info(f"Cache eviction: removed key {evicted_key[:20]}... (cache size: {len(array_cache)})")
+        
+        # Log memory of evicted array
+        try:
+            # evicted_mb, evicted_details = get_array_memory_usage(evicted_arr) # This line is removed
+            # app.logger.info(f"Evicted array memory: {evicted_mb:.2f}MB") # This line is removed
+            pass # No detailed memory logging for evicted array
+        except Exception as e:
+            app.logger.warning(f"Error calculating memory for evicted array: {e}")
         
         # Explicitly clean up NumPy arrays in the evicted object
         if hasattr(evicted_arr, 'X'):
@@ -172,6 +291,13 @@ def cache_array(key, arr):
         
         # Delete the array object itself
         del evicted_arr
+        
+        # Log memory after eviction
+        total_cache_memory_after = log_cache_memory_status()
+        app.logger.info(f"After eviction - Total memory: {total_cache_memory_after}MB")
+        
+        # Log eviction completion
+        app.logger.info("✅ Cache eviction completed successfully")
     
     app.logger.debug(f"Cache size: {len(array_cache)}/{ARRAY_CACHE_MAX_SIZE}")
     
@@ -179,6 +305,9 @@ def cache_array(key, arr):
     if len(array_cache) % 5 == 0:  # More frequent cleanup
         import gc
         gc.collect()
+        
+        # Log cache status periodically
+        log_cache_memory_status()
 
 def get_array_key(array_type, array_params):
     """Generate a unique key for array caching"""
@@ -189,6 +318,11 @@ def get_array_key(array_type, array_params):
 def cleanup_array_objects():
     """Clean up NumPy arrays from all cached objects"""
     import gc
+    
+    app.logger.info("Starting array object cleanup...")
+    
+    # Log cache count before cleanup
+    cache_count_before = log_cache_memory_status()
     
     for key, arr in list(array_cache.items()):
         # Clean up NumPy arrays
@@ -209,7 +343,10 @@ def cleanup_array_objects():
     
     # Force garbage collection
     gc.collect()
-    app.logger.info("Array objects cleaned up")
+    
+    # Log cache count after cleanup
+    cache_count_after = log_cache_memory_status()
+    app.logger.info(f"Cleanup completed. Cache count: {cache_count_before} → {cache_count_after}")
 
 def validate_array_parameters(array_type, num_elem, element_spacing, radius=None):
     """Validate array parameters based on array type"""
@@ -264,7 +401,7 @@ def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,
             'manifold_y': manifold_y,
             'gain': pattern_params_3d.Gain,
             'peak_angle': pattern_params_3d.Peak_Angle,
-            'sll': pattern_params_3d.   SLL,
+            'sll': pattern_params_3d.SLL,
             'hpbw': pattern_params_3d.HPBW
         }  
     
@@ -407,6 +544,8 @@ def analyze_linear_array():
         # Use cached array
         arr = array_cache[array_key]
         app.logger.info(f"Using cached linear array for key: {array_key[:20]}...")
+        
+        # Using cached array (memory logging simplified)
     else:
         # Create new LinearArray instance
         arr = LinearArray(
@@ -420,6 +559,10 @@ def analyze_linear_array():
         )
         # Calculate array factor (expensive computation)
         AF = arr.calc_AF
+        
+        # Log memory usage of new array (simplified)
+        app.logger.info(f"Created new linear array")
+        
         # Cache the array instance for future use
         cache_array(array_key, arr)
         app.logger.info(f"Created and cached new linear array for key: {array_key[:20]}...")
@@ -559,6 +702,8 @@ def analyze_planar_array():
         # Use cached array
         arr = array_cache[array_key]
         print(f"Using cached array for key: {array_key}")
+        
+        # Using cached planar array (memory logging simplified)
     else:
         # Create new PlanarArray instance
         arr = PlanarArray(
@@ -573,6 +718,10 @@ def analyze_planar_array():
           # Calculate pattern parameters
         pattern_params = arr.calc_peak_sll_hpbw(cut_angle)
         pattern_params_3d = arr.calc_peak_sll_hpbw(scan_angle[1])
+        
+        # Log memory usage of new array (simplified)
+        app.logger.info(f"Created new planar array")
+        
         # Cache the array instance for future use
         cache_array(array_key, arr)
         print(f"Created and cached new array for key: {array_key}")
@@ -589,7 +738,7 @@ def analyze_planar_array():
     
     # Generate response based on plot type
     response = create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,pattern_params_3d, cut_angle)
-    app.logger.info(f"Planar array analysis successful for array_type={array_type}, scan_angle={scan_angle}")
+    app.logger.info(f"Planar array analysis successful for array_type={array_type}, num_elem={num_elem}, element_spacing={element_spacing}")
     return jsonify(response)
 
 # Generate a secure nonce for CSP

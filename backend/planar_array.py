@@ -95,12 +95,13 @@ class PlanarArray():
         array_length = np.sqrt((np.max(self.X) - np.min(self.X))**2 + (np.max(self.Y) - np.min(self.Y))**2)
         if not any(self.theta):
             HPBW = 51 / array_length
-            Nt = int(180 / (HPBW / 4))
-            Nt = Nt + (Nt+1) % 2 # making Nt an odd number
+            Nt = int(180 / (HPBW / 2))
+            if Nt % 2 == 0:
+                Nt = Nt + 1
             Nt = max(Nt,181) # 181 point is at least 1 degree theta resolution
             self.theta = np.linspace(0,180,Nt)
         if not any(self.phi):
-            self.phi = np.linspace(0,360,2 * Nt-1)
+            self.phi = np.linspace(0,360,361)
         
     # @classmethod
     # def from_element_position(cls,X,**kwargs):
@@ -169,13 +170,22 @@ class PlanarArray():
     def calc_AF_ (self):
         theta = self.theta.reshape(1,-1)
         phi = self.phi.reshape(-1,1)
-        XCPST = np.tensordot(self.X,np.matmul(np.cos(phi * PI/180),np.sin(theta * PI/180)),axes=0)
-        YSPST = np.tensordot(self.Y,np.matmul(np.sin(phi * PI/180),np.sin(theta * PI/180)),axes=0)
+        CPST = np.matmul(np.cos(phi * PI/180),np.sin(theta * PI/180))
+        SPST = np.matmul(np.sin(phi * PI/180),np.sin(theta * PI/180))
         self.Px = -2 * PI * self.X * np.sin(np.radians(self.scan_angle[0])) * np.cos(np.radians(self.scan_angle[1])) 
         self.Py = -2 * PI * self.Y * np.sin(np.radians(self.scan_angle[0])) * np.sin(np.radians(self.scan_angle[1])) 
         self.P = self.Px + self.Py
         self.I = np.ones(self.P.shape)
-        AF =  np.sum(self.I.reshape(-1,1,1) * np.exp(1j * self.P.reshape(-1,1,1)) * np.exp(1j * (2 * PI * XCPST)) * np.exp(1j * (2 * PI * YSPST)),axis=0)
+        AF = np.zeros(CPST.shape, dtype=complex)
+        for n in range(self.X.shape[0]):
+            AF +=  self.I[n] * np.exp(1j * self.P[n]) * np.exp(1j * (2 * PI * self.X[n] * CPST)) * np.exp(1j * (2 * PI * self.Y[n] * SPST))
+        # XCPST = np.tensordot(self.X,np.matmul(np.cos(phi * PI/180),np.sin(theta * PI/180)),axes=0)
+        # YSPST = np.tensordot(self.Y,np.matmul(np.sin(phi * PI/180),np.sin(theta * PI/180)),axes=0)
+        # self.Px = -2 * PI * self.X * np.sin(np.radians(self.scan_angle[0])) * np.cos(np.radians(self.scan_angle[1])) 
+        # self.Py = -2 * PI * self.Y * np.sin(np.radians(self.scan_angle[0])) * np.sin(np.radians(self.scan_angle[1])) 
+        # self.P = self.Px + self.Py
+        # self.I = np.ones(self.P.shape)
+        # AF =  np.sum(self.I.reshape(-1,1,1) * np.exp(1j * self.P.reshape(-1,1,1)) * np.exp(1j * (2 * PI * XCPST)) * np.exp(1j * (2 * PI * YSPST)),axis=0)
 
         T = np.tile(theta,(len(phi),1))
         cos_theta = np.cos(np.radians(T))
