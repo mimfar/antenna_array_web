@@ -391,6 +391,7 @@ def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,
             'manifold_x': manifold_x,
             'manifold_y': manifold_y,
             'gain': pattern_params.Gain,
+            'gain_3d': pattern_params.Gain_3D,
             'peak_angle': pattern_params.Peak_Angle,
             'sll': pattern_params.SLL,
             'hpbw': pattern_params.HPBW
@@ -400,6 +401,7 @@ def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,
             'manifold_x': manifold_x,
             'manifold_y': manifold_y,
             'gain': pattern_params_3d.Gain,
+            'gain_3d': pattern_params_3d.Gain_3D,
             'peak_angle': pattern_params_3d.Peak_Angle,
             'sll': pattern_params_3d.SLL,
             'hpbw': pattern_params_3d.HPBW
@@ -738,7 +740,7 @@ def analyze_planar_array():
     
     # Generate response based on plot type
     response = create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,pattern_params_3d, cut_angle)
-    app.logger.info(f"Planar array analysis successful for array_type={array_type}, num_elem={num_elem}, element_spacing={element_spacing}")
+    app.logger.info(f"Planar array analysis successful for array_type={array_type}, num_elem={num_elem}")
     return jsonify(response)
 
 # Generate a secure nonce for CSP

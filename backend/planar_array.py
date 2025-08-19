@@ -153,7 +153,7 @@ class PlanarArray():
         AFcol = np.sum(self.Icol * np.exp(1j * self.Pcol + 1j * 2 * np.pi * np.tensordot(self.col,CPST,axes = 0)),axis=0)
         AF = AFrow * AFcol
         T = np.tile(theta,(len(phi),1))
-        cos_theta = np.cos(np.radians(T))
+        cos_theta = np.abs(np.cos(np.radians(T)) )** (0.3)
         cos_theta[T>90] = cos_theta[T>90] * 10**(-self.FB_ratio/20)
         
         if self.element_pattern:
@@ -188,7 +188,7 @@ class PlanarArray():
         # AF =  np.sum(self.I.reshape(-1,1,1) * np.exp(1j * self.P.reshape(-1,1,1)) * np.exp(1j * (2 * PI * XCPST)) * np.exp(1j * (2 * PI * YSPST)),axis=0)
 
         T = np.tile(theta,(len(phi),1))
-        cos_theta = np.cos(np.radians(T))
+        cos_theta = np.abs(np.cos(np.radians(T)) )** (0.3)
         cos_theta[T>90] = cos_theta[T>90] * 10**(-self.FB_ratio/20)
         
         if self.element_pattern:
@@ -234,6 +234,7 @@ class PlanarArray():
     def calc_peak_sll_hpbw(self,cut_angle):
         '''Function calculates the Peak value and angle, SLL, and HPBW of G in dB
         assuming a pattern with a single peak (no grating lobes)'''
+        peak_3D = np.max(db20(np.abs(self.AF)))
         theta_deg,G = self.pattern_cut(cut_angle)
         ## reducing the theta scope to -90->90 degrees
         idx_m90 = np.argmin(np.abs(theta_deg + 90))
@@ -260,8 +261,8 @@ class PlanarArray():
         except:
             SLL = -100
         
-        pattern_params = namedtuple('pattern_params',['Gain','Peak_Angle','SLL','HPBW'])
-        self.pattern_params = pattern_params(float(f'{peak:1.1f}'), float(f'{theta_peak:1.1f}'), float(f'{SLL:1.1f}'), float(f'{HPBW:1.1f}'))
+        pattern_params = namedtuple('pattern_params',['Gain_3D','Gain','Peak_Angle','SLL','HPBW'])
+        self.pattern_params = pattern_params(float(f'{peak_3D:1.1f}'), float(f'{peak:1.1f}'), float(f'{theta_peak:1.1f}'), float(f'{SLL:1.1f}'), float(f'{HPBW:1.1f}'))
         return self.pattern_params
     
     @staticmethod
@@ -523,7 +524,7 @@ class PlanarArray():
         
         return fig,ax;
 
-    def polarsurf(self,g_range=30,fig=None,ax=None,title='Polar Surf'):
+    def polarsurf(self,g_range=30,fig=None,ax=None,title=''):
         
         if isinstance(fig, matplotlib.figure.Figure) and (not isinstance(ax,matplotlib.axes.Axes)):
             if fig.axes:
@@ -550,7 +551,7 @@ class PlanarArray():
         Y = np.sin(np.radians(T)) * np.sin(np.radians(P))
         G[G < (peak - g_range)] = peak - g_range -1
 
-        for p in np.linspace(0,330,12) * np.pi / 180:
+        for p in np.array([0, 30, 60, 90, 120, 150, 180, -150, -120, -90, -60, -30]) * np.pi / 180:
             plt.plot([0, np.cos(p)],[0, np.sin(p)],'--',color=[0.5,0.5,0.5],alpha=0.5)
             plt.text(1.07 * np.cos(p),1.07 * np.sin(p),f'{(p*180/np.pi):1.0f}')
         tt = np.linspace(0,360,361) * np.pi / 180

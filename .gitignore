@@ -51,3 +51,10 @@ debug_csp.py
 start.sh
 render.yaml
 test.sh
+requirements_generator.txt
+.gitignore
+test_opt1.csv
+test_opt3.csv
+planar_array_parameters.csv
+README_parameter_generator.md
+generate_planar_array_params.py

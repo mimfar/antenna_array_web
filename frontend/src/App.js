@@ -899,13 +899,14 @@ function App() {
   const renderSimplePatternParams = (result) => {
     return (
       <div style={{ marginTop: 50, padding: '0 16px 16px 16px' }}>
-        <h2>Pattern Parameters</h2>
+        <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', color: '#333' }}>Pattern Parameters</h4>
         <table style={{ borderCollapse: 'collapse', width: '100%', background: '#fff' }}>
           <thead>
             <tr>
               <th style={{ padding: 6, border: '1px solid #eee' }}>Color</th>
               <th style={{ padding: 6, border: '1px solid #eee' }}>Label</th>
               <th style={{ padding: 6, border: '1px solid #eee' }}>Gain (dB)</th>
+              <th style={{ padding: 6, border: '1px solid #eee' }}>Gain 3D (dB)</th>
               <th style={{ padding: 6, border: '1px solid #eee' }}>Peak Angle (deg)</th>
               <th style={{ padding: 6, border: '1px solid #eee' }}>SLL (dB)</th>
               <th style={{ padding: 6, border: '1px solid #eee' }}>HPBW (deg)</th>
@@ -920,6 +921,7 @@ function App() {
                 </td>
                 <td style={{ padding: 6, border: '1px solid #eee' }}>Current</td>
                 <td style={{ padding: 6, border: '1px solid #eee' }}>{result.gain.toFixed(2)}</td>
+                <td style={{ padding: 6, border: '1px solid #eee' }}>{result.gain_3d !== undefined ? result.gain_3d.toFixed(2) : ''}</td>
                 <td style={{ padding: 6, border: '1px solid #eee' }}>{result.peak_angle.toFixed(2)}</td>
                 <td style={{ padding: 6, border: '1px solid #eee' }}>{result.sll.toFixed(2)}</td>
                 <td style={{ padding: 6, border: '1px solid #eee' }}>{result.hpbw.toFixed(2)}</td>
@@ -1375,7 +1377,7 @@ function App() {
             
             {/* Pattern parameters table */}
             <div style={{ marginTop: 50, padding: '0 16px 16px 16px' }}>
-              <h2>Pattern Parameters</h2>
+              <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', color: '#333' }}>Pattern Parameters</h4>
               <table style={{ borderCollapse: 'collapse', width: '100%', background: '#fff' }}>
                 <thead>
                   <tr>
@@ -1918,20 +1920,38 @@ function App() {
                         <th style={{ padding: 6, border: '1px solid #eee' }}>Color</th>
                         <th style={{ padding: 6, border: '1px solid #eee' }}>Label</th>
                         <th style={{ padding: 6, border: '1px solid #eee' }}>Gain (dB)</th>
+                        <th style={{ padding: 6, border: '1px solid #eee' }}>Gain 3D (dB)</th>
                         <th style={{ padding: 6, border: '1px solid #eee' }}>Peak Angle (deg)</th>
                         <th style={{ padding: 6, border: '1px solid #eee' }}>SLL (dB)</th>
                         <th style={{ padding: 6, border: '1px solid #eee' }}>HPBW (deg)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {/* Current trace only */}
-                      {result && result.gain !== undefined && (
+                      {/* Kept traces */}
+                      {planarTraces.map((trace, idx) => (
+                        trace.visible && trace.patternParams ? (
+                          <tr key={idx}>
+                            <td style={{ padding: 6, border: '1px solid #eee' }}>
+                              <span style={{ display: 'inline-block', width: 16, height: 8, background: trace.color, borderRadius: 2, border: '1px solid #ccc' }}></span>
+                            </td>
+                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.label}</td>
+                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.gain !== undefined ? trace.patternParams.gain.toFixed(2) : ''}</td>
+                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.gain_3d !== undefined ? trace.patternParams.gain_3d.toFixed(2) : ''}</td>
+                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.peak_angle !== undefined ? trace.patternParams.peak_angle.toFixed(2) : ''}</td>
+                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.sll !== undefined ? trace.patternParams.sll.toFixed(2) : ''}</td>
+                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.hpbw !== undefined ? trace.patternParams.hpbw.toFixed(2) : ''}</td>
+                          </tr>
+                        ) : null
+                      ))}
+                      {/* Current trace */}
+                      {planarShowCurrent && result && result.gain !== undefined && (
                         <tr>
                           <td style={{ padding: 6, border: '1px solid #eee' }}>
                             <span style={{ display: 'inline-block', width: 16, height: 8, background: '#0074D9', borderRadius: 2, border: '1px solid #eee' }}></span>
                           </td>
                           <td style={{ padding: 6, border: '1px solid #eee' }}>Current</td>
                           <td style={{ padding: 6, border: '1px solid #eee' }}>{result.gain.toFixed(2)}</td>
+                          <td style={{ padding: 6, border: '1px solid #eee' }}>{result.gain_3d !== undefined ? result.gain_3d.toFixed(2) : ''}</td>
                           <td style={{ padding: 6, border: '1px solid #eee' }}>{result.peak_angle.toFixed(2)}</td>
                           <td style={{ padding: 6, border: '1px solid #eee' }}>{result.sll.toFixed(2)}</td>
                           <td style={{ padding: 6, border: '1px solid #eee' }}>{result.hpbw.toFixed(2)}</td>
@@ -1943,7 +1963,151 @@ function App() {
               </div>
               
                             {/* Legend area */}
-              {renderSimpleLegend(result, planarArrayType, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarCutAngle, result.theta && result.pattern)}
+              <div className="legend-container" style={{ flex: '0 0 20%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <h3 style={{ fontSize: 15, margin: 0 }}>Legend</h3>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button 
+                      onClick={handleKeepPlanarTrace}
+                      disabled={loading || !result || !result.theta || !result.pattern}
+                      style={{ 
+                        padding: '4px 8px',
+                        fontSize: 11, 
+                        background: '#e0e0e0',
+                        color: 'black',
+                        border: '1px solid #ddd',
+                        borderRadius: 3,
+                        cursor: loading ? 'not-allowed' : 'pointer'
+                      }}
+                      title="Keep current trace"
+                    >
+                      Keep
+                    </button>
+                    <button 
+                      onClick={handleClearPlanarTraces}
+                      disabled={loading || planarTraces.length === 0}
+                      style={{ 
+                        padding: '4px 8px', 
+                        fontSize: 11, 
+                        background: '#fff',
+                        color: 'black',
+                        border: '1px solid #ddd',
+                        borderRadius: 3,
+                        cursor: loading ? 'not-allowed' : 'pointer'
+                      }}
+                      title="Clear all traces"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: 4 }}>Visible</th>
+                      <th style={{ textAlign: 'left', padding: 4 }}>Color</th>
+                      <th style={{ textAlign: 'left', padding: 4 }}>Type</th>
+                      <th style={{ textAlign: 'left', padding: 4 }}>N</th>
+                      <th style={{ textAlign: 'left', padding: 4 }}>Spacing</th>
+                      <th style={{ textAlign: 'left', padding: 4 }}>Scan</th>
+                      <th style={{ textAlign: 'left', padding: 4 }}>Cut</th>
+                      <th style={{ textAlign: 'left', padding: 4 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Kept traces */}
+                    {planarTraces.map((trace, idx) => (
+                      <tr
+                        key={idx}
+                        onMouseEnter={() => setPlanarHighlightedTrace(idx)}
+                        onMouseLeave={() => setPlanarHighlightedTrace(null)}
+                        style={{ background: planarHighlightedTrace === idx ? '#e6f7ff' : undefined }}
+                      >
+                        <td style={{ padding: 4 }}>
+                          <input
+                            type="checkbox"
+                            checked={trace.visible}
+                            onChange={e => {
+                              const newTraces = planarTraces.slice();
+                              newTraces[idx].visible = e.target.checked;
+                              setPlanarTraces(newTraces);
+                            }}
+                            style={{ marginRight: 4 }}
+                          />
+                        </td>
+                        <td style={{ padding: 4 }}>
+                          <span style={{ display: 'inline-block', width: 16, height: 8, background: trace.color, borderRadius: 2, border: '1px solid #ccc' }}></span>
+                        </td>
+                        <td style={{ padding: 4 }}>{trace.params.arrayType}</td>
+                        <td style={{ padding: 4 }}>
+                          {trace.params.arrayType === 'circ'
+                            ? (() => {
+                                const parts = trace.params.numElem.map(n => n.toString());
+                                const total = trace.params.numElem.reduce((a, b) => a + b, 0);
+                                return `${total} (${parts.join(',')})`;
+                              })()
+                            : trace.params.numElem.join('x')
+                          }
+                        </td>
+                        <td style={{ padding: 4 }}>
+                          {trace.params.arrayType === 'circ'
+                            ? trace.params.radii
+                            : trace.params.elementSpacing.join('x')
+                          }
+                        </td>
+                        <td style={{ padding: 4 }}>{trace.params.scanAngle[0]}°, {trace.params.scanAngle[1]}°</td>
+                        <td style={{ padding: 4 }}>{trace.params.cutAngle}°</td>
+                        <td style={{ padding: 4 }}>
+                          <button
+                            onClick={() => handleRemovePlanarTrace(idx)}
+                            style={{ background: 'none', border: 'none', color: '#FF4136', cursor: 'pointer', fontSize: 13, padding: 0 }}
+                            title="Remove trace"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Current trace */}
+                    {result && result.theta && result.pattern && (
+                      <tr>
+                        <td style={{ padding: 4 }}>
+                          <input
+                            type="checkbox"
+                            checked={planarShowCurrent}
+                            onChange={() => setPlanarShowCurrent(!planarShowCurrent)}
+                            style={{ marginRight: 4 }}
+                          />
+                        </td>
+                        <td style={{ padding: 4 }}>
+                          <span style={{ display: 'inline-block', width: 16, height: 8, background: '#0074D9', borderRadius: 2, border: '1px solid #ccc' }}></span>
+                        </td>
+                        <td style={{ padding: 4 }}>{planarArrayType}</td>
+                        <td style={{ padding: 4 }}>
+                          {planarArrayType === 'circ'
+                            ? (() => {
+                                const parts = planarNumElemRaw.split(',').map(s => s.trim()).filter(s => s !== '');
+                                const nums = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n > 0);
+                                const total = nums.reduce((a, b) => a + b, 0);
+                                return `${total} (${nums.join(',')})`;
+                              })()
+                            : (Array.isArray(planarNumElem) ? planarNumElem.join('x') : planarNumElem)
+                          }
+                        </td>
+                        <td style={{ padding: 4 }}>
+                          {planarArrayType === 'circ'
+                            ? planarRadiusRaw
+                            : (Array.isArray(planarElementSpacing) ? planarElementSpacing.join('x') : planarElementSpacing)
+                          }
+                        </td>
+                        <td style={{ padding: 4 }}>{planarScanAngle[0]}°, {planarScanAngle[1]}°</td>
+                        <td style={{ padding: 4 }}>{planarCutAngle}°</td>
+                        <td style={{ padding: 4 }}></td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
       </div>
       
             
@@ -1966,7 +2130,7 @@ function App() {
                   }]}
               layout={{
                     width: undefined,
-                    height: Math.round(600 * (2/3)), // 2:3 aspect ratio (400px)
+                    height: 600, // 1:1 aspect ratio (square)
                 margin: { l: 50, r: 20, t: 30, b: 50 },
                     title: { text: 'Array Manifold', font: { size: 16 } },
                 xaxis: {
@@ -2083,7 +2247,7 @@ function App() {
                   ]}
                   layout={{
                     width: undefined,
-                    height: Math.round(600 * (2/3)), // 2:3 aspect ratio (400px)
+                    height: 600, // 1:1 aspect ratio (square)
                     title: '3D Polar Array Pattern',
                     scene: {
                       camera: {
@@ -2102,54 +2266,9 @@ function App() {
             })()}
                 
                 {/* Pattern parameters table */}
-                <div style={{ marginTop: 50, padding: '0 16px 16px 16px' }}>
-                  <h2>Pattern Parameters</h2>
-                  <table style={{ borderCollapse: 'collapse', width: '100%', background: '#fff' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ padding: 6, border: '1px solid #eee' }}>Color</th>
-                        <th style={{ padding: 6, border: '1px solid #eee' }}>Label</th>
-                        <th style={{ padding: 6, border: '1px solid #eee' }}>Gain (dB)</th>
-                        <th style={{ padding: 6, border: '1px solid #eee' }}>Peak Angle (deg)</th>
-                        <th style={{ padding: 6, border: '1px solid #eee' }}>SLL (dB)</th>
-                        <th style={{ padding: 6, border: '1px solid #eee' }}>HPBW (deg)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* Kept traces */}
-                      {planarTraces.map((trace, idx) => (
-                        trace.visible && trace.patternParams ? (
-                          <tr key={idx}>
-                            <td style={{ padding: 6, border: '1px solid #eee' }}>
-                              <span style={{ display: 'inline-block', width: 16, height: 8, background: trace.color, borderRadius: 2, border: '1px solid #ccc' }}></span>
-                            </td>
-                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.label}</td>
-                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.gain !== undefined ? trace.patternParams.gain.toFixed(2) : ''}</td>
-                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.peak_angle !== undefined ? trace.patternParams.peak_angle.toFixed(2) : ''}</td>
-                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.sll !== undefined ? trace.patternParams.sll.toFixed(2) : ''}</td>
-                            <td style={{ padding: 6, border: '1px solid #eee' }}>{trace.patternParams.hpbw !== undefined ? trace.patternParams.hpbw.toFixed(2) : ''}</td>
-                          </tr>
-                        ) : null
-                      ))}
-                      {/* Current trace */}
-                      {planarShowCurrent && result && result.gain !== undefined && (
-                        <tr>
-                          <td style={{ padding: 6, border: '1px solid #eee' }}>
-                            <span style={{ display: 'inline-block', width: 16, height: 8, background: '#0074D9', borderRadius: 2, border: '1px solid #eee' }}></span>
-                          </td>
-                          <td style={{ padding: 6, border: '1px solid #eee' }}>Current</td>
-                          <td style={{ padding: 6, border: '1px solid #eee' }}>{result.gain.toFixed(2)}</td>
-                          <td style={{ padding: 6, border: '1px solid #eee' }}>{result.peak_angle.toFixed(2)}</td>
-                          <td style={{ padding: 6, border: '1px solid #eee' }}>{result.sll.toFixed(2)}</td>
-                          <td style={{ padding: 6, border: '1px solid #eee' }}>{result.hpbw.toFixed(2)}</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-          </div>
+                {renderSimplePatternParams(result)}
               </div>
               
-              {/* Legend area */}
               {/* Legend area */}
               {renderSimpleLegend(result, planarArrayType, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarCutAngle, result.data_polar3d)}
             </div>
@@ -2201,7 +2320,7 @@ function App() {
                   }]}
                   layout={{
                     width: undefined,
-                    height: Math.round(600 * (2/3)), // 2:3 aspect ratio (400px)
+                    height: 600, // 1:1 aspect ratio (square)
                     title: 'Antenna Array Pattern Contour',
                     xaxis: {
                       title: 'φ (degrees)',
@@ -2254,7 +2373,7 @@ function App() {
                     maxWidth: '800px', 
                     height: 'auto', 
                     objectFit: 'contain',
-                    aspectRatio: '3/2' // Maintain 2:3 aspect ratio
+                    aspectRatio: '1/1' // Maintain 1:1 aspect ratio (square)
                   }}
                 />
                 

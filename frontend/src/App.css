@@ -142,10 +142,11 @@ textarea:focus {
   height: auto !important;
 }
 
-/* Maintain 2:3 aspect ratio for main plots */
+/* Maintain 2:3 aspect ratio for main plots - but don't override Plotly height */
 .plot-container .js-plotly-plot .plotly {
-  aspect-ratio: 3/2 !important;
-  height: auto !important;
+  width: 100% !important;
+  /* Remove aspect-ratio override to let Plotly handle height */
+  /* height: auto !important; - removed to prevent override */
 }
 
 /* Responsive behavior for different screen sizes */
