@@ -727,7 +727,10 @@ def analyze_planar_array():
         # Cache the array instance for future use
         cache_array(array_key, arr)
         print(f"Created and cached new array for key: {array_key}")
-    
+
+    app.logger.info(f'AF size: {AF.nbytes / (1024 * 1024):1.1f} MB')
+    app.logger.info(f'AF shape: {AF.shape}')
+
     # Get manifold data
     manifold_x = (arr.X - np.mean(arr.X)).tolist()
     manifold_y = (arr.Y - np.mean(arr.Y)).tolist()

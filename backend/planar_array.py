@@ -148,9 +148,29 @@ class PlanarArray():
         phi = self.phi.reshape(-1,1)
         CPST = np.matmul(np.cos(phi * PI/180),np.sin(theta * PI/180))
         SPST = np.matmul(np.sin(phi * PI/180),np.sin(theta * PI/180))
+        
+        AFcol = np.zeros(CPST.shape, dtype=complex)
 
-        AFrow = np.sum(self.Irow * np.exp(1j * self.Prow + 1j * 2 * np.pi * np.tensordot(self.row,SPST,axes = 0)),axis=0)
-        AFcol = np.sum(self.Icol * np.exp(1j * self.Pcol + 1j * 2 * np.pi * np.tensordot(self.col,CPST,axes = 0)),axis=0)
+        for i in range(len(self.col)):
+            AFcol += self.Icol[i] * np.exp(1j * self.Pcol[i] + 1j * 2 * np.pi * self.col[i] * CPST)
+        AFrow = np.zeros(SPST.shape, dtype=complex)
+        for i in range(len(self.row)):
+            AFrow += self.Irow[i] * np.exp(1j * self.Prow[i] + 1j * 2 * np.pi * self.row[i] * SPST)
+        
+        # AFcol = np.sum(self.Icol * np.exp(1j * self.Pcol + 1j * 2 * np.pi * np.tensordot(self.col,CPST,axes = 0)),axis=0)
+        # AFrow = np.sum(self.Irow * np.exp(1j * self.Prow + 1j * 2 * np.pi * np.tensordot(self.row,SPST,axes = 0)),axis=0)
+
+        # chunk_size = 50
+        # AFcol = np.zeros(CPST.shape, dtype=complex)
+        # for i in range(0, len(self.col), chunk_size):
+        #     end = min(i + chunk_size, len(self.col))
+        #     chunk = np.tensordot(self.col[i:end], CPST, axes=0)
+        #     AFcol += np.sum(self.Icol[i:end] * np.exp(1j * self.Pcol[i:end] + 1j * 2 * np.pi * chunk), axis=0)
+        # AFrow = np.zeros(SPST.shape, dtype=complex)
+        # for i in range(0, len(self.row), chunk_size):
+        #     end = min(i + chunk_size, len(self.row))
+        #     chunk = np.tensordot(self.row[i:end], SPST, axes=0)
+        #     AFrow += np.sum(self.Irow[i:end] * np.exp(1j * self.Prow[i:end] + 1j * 2 * np.pi * chunk), axis=0)
         AF = AFrow * AFcol
         T = np.tile(theta,(len(phi),1))
         cos_theta = np.abs(np.cos(np.radians(T)) )** (0.3)
@@ -159,6 +179,7 @@ class PlanarArray():
         
         if self.element_pattern:
             AF = AF * cos_theta
+
 
         delta_theta = (self.theta[1] - self.theta[0]) * np.pi / 180
         delta_phi= (phi[1] - phi[0]) * np.pi / 180
@@ -187,7 +208,6 @@ class PlanarArray():
         # self.P = self.Px + self.Py
         # self.I = np.ones(self.P.shape)
         # AF =  np.sum(self.I.reshape(-1,1,1) * np.exp(1j * self.P.reshape(-1,1,1)) * np.exp(1j * (2 * PI * XCPST)) * np.exp(1j * (2 * PI * YSPST)),axis=0)
-
         T = np.tile(theta,(len(phi),1))
         cos_theta = np.abs(np.cos(np.radians(T)) )** (0.3)
         cos_theta[(89<=T) & (T<=91)] = np.cos(np.radians(89)) ** (0.3) * 10**(-self.FB_ratio/20)
