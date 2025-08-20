@@ -90,7 +90,7 @@ const PlanarArrayForm = ({
                   type="number"
                   step="1"
                   min="1"
-                  max="100"
+                  max="1000"
                   value={numElem[0]}
                   onChange={e => handlePlanarIntegerInputChange(e.target.value, 0, setNumElem)}
                   required
@@ -105,7 +105,7 @@ const PlanarArrayForm = ({
                   type="number"
                   step="1"
                   min="1"
-                  max="100"
+                  max="1000"
                   value={numElem[1]}
                   onChange={e => handlePlanarIntegerInputChange(e.target.value, 1, setNumElem)}
                   required

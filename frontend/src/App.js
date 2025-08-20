@@ -251,7 +251,7 @@ function App() {
 
   const handlePlanarIntegerInputChange = (value, index, setter) => {
     // Sanitize to integer immediately
-    const sanitized = sanitizeInteger(value, 1, 100);
+    const sanitized = sanitizeInteger(value, 1, 1000);
     if (sanitized !== null) {
       const currentArray = [...planarNumElem];
       currentArray[index] = sanitized;
@@ -2383,16 +2383,26 @@ function App() {
                     y: y,
                     z: zTransposed,
                     colorscale: 'Hot',
-                    contours: {
-                      coloring: 'heatmap',
-                      showlabels: true
-                    },
-                    colorbar: {
-                      title: 'Gain (dB)',
-                      titleside: 'right'
-                    },
-                    zmin: contourData.peak - contourData.g_range,
-                    zmax: contourData.peak
+                                          contours: {
+                        coloring: 'heatmap',
+                        showlabels: true,
+                        // Use blue colors for contour lines
+                        labelfont: { color: 'blue', size: 12 },
+                        line: { color: 'blue', width: 1, dash: 'dashdot' }
+                      },
+                      // Override default black contour lines with blue
+                      line: { color: 'blue', width: 1, dash: 'dashdot' },
+                                      colorbar: {
+                    title: 'Gain (dB)',
+                    titleside: 'right'
+                  },
+                  zmin: contourData.peak - contourData.g_range,
+                  zmax: contourData.peak,
+                  hovertemplate: `
+                    <b>φ:</b> %{x:.1f}°<br>
+                    <b>θ:</b> %{y:.1f}°<br>
+                    <b>G:</b> %{z:.2f} dB<extra></extra>
+                  `
                   }]}
                   layout={{
                     width: undefined,

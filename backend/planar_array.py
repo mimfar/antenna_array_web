@@ -401,8 +401,6 @@ class PlanarArray():
             return f"<b>Direction:</b><br>θ: {t:.1f}°<br>φ: {p:.1f}°<br>Gain: {g:.2f} dB"
     
         hover_text = np.vectorize(format_hover)(T, P, G-g_range+peak)
-        print(np.max(G),np.min(G),np.max(Z),np.min(Z))
-        print(Z.shape,G.shape)
         return {
             'x': X.tolist(),
             'y': Y.tolist(), 
