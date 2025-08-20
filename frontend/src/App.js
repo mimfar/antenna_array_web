@@ -154,8 +154,8 @@ function App() {
   const [axisLocked, setAxisLocked] = useState(false);                     // Lock axis limits
 
   // Planar array axis limits (separate from linear array)
-  const [planarXMin, setPlanarXMin] = useState('');                         // Planar X-axis minimum value
-  const [planarXMax, setPlanarXMax] = useState('');                         // Planar X-axis maximum value
+  const [planarXMin, setPlanarXMin] = useState('-90');                         // Planar X-axis minimum value
+  const [planarXMax, setPlanarXMax] = useState('90');                         // Planar X-axis maximum value
   const [planarYMin, setPlanarYMin] = useState('');                         // Planar Y-axis minimum value
   const [planarYMax, setPlanarYMax] = useState('');                         // Planar Y-axis maximum value
   const [planarXStep, setPlanarXStep] = useState('30');                     // Planar X-axis tick step
@@ -563,8 +563,8 @@ function App() {
     ) {
       // Only update axis limits if not locked
       if (!planarAxisLocked) {
-        setPlanarXMin(result.theta[0]);
-        setPlanarXMax(result.theta[result.theta.length - 1]);
+        // setPlanarXMin(result.theta[0]);
+        // setPlanarXMax(result.theta[result.theta.length - 1]);
         setPlanarYMin(result.ymin);
         // Only set Ymax if it's empty or matches the auto-set value to allow user customization
         if (planarYMax === '' || planarYMax === planarAutoYMax) {
@@ -2229,10 +2229,13 @@ function App() {
                       x: result.data_polar3d.x,
                       y: result.data_polar3d.y,
                       z: result.data_polar3d.z,
+                      surfacecolor: result.data_polar3d.intensity,  // Custom colors
                       colorscale: 'Viridis',
                       opacity: 0.8,
                       showscale: true,
-                      colorbar: { title: 'Gain (dB)' }
+                      colorbar: {title: 'Gain (dB)',},
+                      hovertext: result.data_polar3d.hover_text,  // Use backend-generated hover text
+                      hoverinfo: 'text'  // Show only our custom text
                     },
                     {
                       type: 'scatter3d',
@@ -2243,6 +2246,54 @@ function App() {
                       marker: { color: 'red', size: 3 },
                       name: 'Array Elements',
                       showlegend: false
+                    },
+                    // X-axis line (red)
+                    {
+                      type: 'scatter3d',
+                      x: [0, result.data_polar3d.g_range],
+                      y: [0, 0],
+                      z: [0, 0],
+                      mode: 'lines',
+                      line: { color: 'red', width: 4 },
+                      name: 'X-axis',
+                      showlegend: false,
+                      hoverinfo: 'skip'
+                    },
+                    // Y-axis line (green)
+                    {
+                      type: 'scatter3d',
+                      x: [0, 0],
+                      y: [0, result.data_polar3d.g_range],
+                      z: [0, 0],
+                      mode: 'lines',
+                      line: { color: 'green', width: 4 },
+                      name: 'Y-axis',
+                      showlegend: false,
+                      hoverinfo: 'skip'
+                    },
+                    // Z-axis line (blue)
+                    {
+                      type: 'scatter3d',
+                      x: [0, 0],
+                      y: [0, 0],
+                      z: [0, result.data_polar3d.g_range+2],
+                      mode: 'lines',
+                      line: { color: 'blue', width: 4 },
+                      name: 'Z-axis',
+                      showlegend: false,
+                      hoverinfo: 'skip'
+                    },
+                    // Axis labels
+                    {
+                      type: 'scatter3d',
+                      x: [result.data_polar3d.g_range * 1.1, 0, 0],
+                      y: [0, result.data_polar3d.g_range * 1.1, 0],
+                      z: [0, 0, result.data_polar3d.g_range * 1.1],
+                      mode: 'text',
+                      text: ['X', 'Y', 'Z'],
+                      textfont: { size: 16, color: ['red', 'green', 'blue'] },
+                      showlegend: false,
+                      hoverinfo: 'skip'
                     }
                   ]}
                   layout={{
@@ -2253,9 +2304,34 @@ function App() {
                       camera: {
                         eye: { x: 1.5, y: 1.5, z: 1.5 }
                       },
-                      xaxis: { title: {text:''}, showgrid: false, zeroline: false ,showticklabels: false},
-                      yaxis: { title: {text:''}, showgrid: false, zeroline: false ,showticklabels: false},
-                      zaxis: { title: {text:''}, showgrid: false, showline: false ,showticklabels: false}
+                      // Completely disable all axis elements
+                      xaxis: { 
+                        showgrid: false, 
+                        zeroline: false, 
+                        showticklabels: false,
+                        showline: false,
+                        showbackground: false,
+                        title: { text: '' }
+                      },
+                      yaxis: { 
+                        showgrid: false, 
+                        zeroline: false, 
+                        showticklabels: false,
+                        showline: false,
+                        showbackground: false,
+                        title: { text: '' }
+                      },
+                      zaxis: { 
+                        showgrid: false, 
+                        zeroline: false, 
+                        showticklabels: false,
+                        showline: false,
+                        showbackground: false,
+                        title: { text: '' }
+                      },
+                      // Remove the bounding box and background
+                      bgcolor: 'rgba(0,0,0,0)',
+                      showbackground: false
                     },
                     margin: { l: 0, r: 0, t: 50, b: 0 },
                     autosize: true

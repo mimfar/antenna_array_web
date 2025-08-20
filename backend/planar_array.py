@@ -154,7 +154,8 @@ class PlanarArray():
         AF = AFrow * AFcol
         T = np.tile(theta,(len(phi),1))
         cos_theta = np.abs(np.cos(np.radians(T)) )** (0.3)
-        cos_theta[T>90] = cos_theta[T>90] * 10**(-self.FB_ratio/20)
+        cos_theta[(89<=T) & (T<=91)] = np.cos(np.radians(89)) ** (0.3) * 10**(-self.FB_ratio/20)
+        cos_theta[T>91] = cos_theta[T>91] * 10**(-self.FB_ratio/20)
         
         if self.element_pattern:
             AF = AF * cos_theta
@@ -189,7 +190,8 @@ class PlanarArray():
 
         T = np.tile(theta,(len(phi),1))
         cos_theta = np.abs(np.cos(np.radians(T)) )** (0.3)
-        cos_theta[T>90] = cos_theta[T>90] * 10**(-self.FB_ratio/20)
+        cos_theta[(89<=T) & (T<=91)] = np.cos(np.radians(89)) ** (0.3) * 10**(-self.FB_ratio/20)
+        cos_theta[T>91] = cos_theta[T>91] * 10**(-self.FB_ratio/20)
         
         if self.element_pattern:
             AF = AF * cos_theta
@@ -383,7 +385,8 @@ class PlanarArray():
         
         peak = np.max(G)
         G = G - peak + g_range
-        G[G < (peak - g_range)] = 0
+        # G[G < (peak - g_range)] = 0
+        G[G<0] = 0
         
         # Convert to Cartesian coordinates
         X = G * np.sin(np.radians(T)) * np.cos(np.radians(P))
@@ -394,12 +397,18 @@ class PlanarArray():
         max1 = max(np.max(self.X - np.mean(self.X)), np.max(self.Y - np.mean(self.Y)),0.1) # 0.1 to avoid divide by zero in case of a 1x1 array
         array_x = (self.X - np.mean(self.X)) / max1 * g_range / 2
         array_y = (self.Y - np.mean(self.Y)) / max1 * g_range / 2
-        
+        def format_hover(t, p, g):
+            return f"<b>Direction:</b><br>θ: {t:.1f}°<br>φ: {p:.1f}°<br>Gain: {g:.2f} dB"
+    
+        hover_text = np.vectorize(format_hover)(T, P, G-g_range+peak)
+        print(np.max(G),np.min(G),np.max(Z),np.min(Z))
+        print(Z.shape,G.shape)
         return {
             'x': X.tolist(),
             'y': Y.tolist(), 
             'z': Z.tolist(),
-            'intensity': G.tolist(),
+            'hover_text': hover_text.tolist(),
+            'intensity': (G-g_range+peak).tolist(),
             'array_x': array_x.tolist(),
             'array_y': array_y.tolist(),
             'peak': float(peak),
