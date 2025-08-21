@@ -515,9 +515,9 @@ def analyze_linear_array():
         app.logger.warning(f"num_elem out of allowed range: {num_elem}")
         return create_error_response(f'num_elem must be between 1 and {config.MAX_ELEMENTS}')
     
-    if element_spacing <= 0 or element_spacing > config.MAX_SPACING:
+    if element_spacing < 0.1 or element_spacing > config.MAX_SPACING:
         app.logger.warning(f"element_spacing out of allowed range: {element_spacing}")
-        return create_error_response(f'element_spacing must be between 0 and {config.MAX_SPACING}')
+        return create_error_response(f'element_spacing must be between 0.1 and {config.MAX_SPACING}')
     
     # Get other parameters with defaults
     scan_angle = data.get('scan_angle', 0)
@@ -571,6 +571,9 @@ def analyze_linear_array():
     
     # Calculate pattern parameters (this is fast since array is already computed)
     pattern_params = arr.calc_peak_sll_hpbw()
+    app.logger.info(f'AF size: {arr.AF.nbytes / (1024 * 1024):1.1f} MB')
+    app.logger.info(f'AF shape: {arr.AF.shape}')
+    app.logger.info(f'Largest Matrix: {arr.num_elem * arr.AF.nbytes / (1024 * 1024):1.1f} MB')
 
     # Calculate pattern data (same for both cartesian and polar plots)
     theta = arr.theta.tolist()
@@ -676,8 +679,17 @@ def analyze_planar_array():
             f'Total number of elements ({total_num_elem}) exceeds the maximum limit of {config.MAX_ELEMENTS}. '
             f'Please reduce the number of elements in your array configuration.'
         )
+    
+    # Check individual row/column limits for rectangular/triangular arrays
+    if array_type in ['rect', 'tri']:
+        if num_elem[0] > 500 or num_elem[1] > 500:
+            app.logger.warning(f"Individual element count {num_elem} exceeds limit 500")
+            return create_error_response(
+                f'Individual row and column element counts cannot exceed 500. '
+                f'Current values: rows={num_elem[0]}, columns={num_elem[1]}'
+            )
     if array_type in ['rect','tri']:
-        if any(s <= 0 or s > config.MAX_SPACING for s in element_spacing):
+        if any(s < 0.1 or s > config.MAX_SPACING for s in element_spacing):
             app.logger.warning(f"Element spacing {element_spacing} exceeds limit {config.MAX_SPACING}")
             return create_error_response(
                 f'Element spacing values must be between 0.1 and {config.MAX_SPACING} wavelengths. '
@@ -728,8 +740,8 @@ def analyze_planar_array():
         cache_array(array_key, arr)
         print(f"Created and cached new array for key: {array_key}")
 
-    app.logger.info(f'AF size: {AF.nbytes / (1024 * 1024):1.1f} MB')
-    app.logger.info(f'AF shape: {AF.shape}')
+    app.logger.info(f'AF size: {arr.AF.nbytes / (1024 * 1024):1.1f} MB')
+    app.logger.info(f'AF shape: {arr.AF.shape}')
 
     # Get manifold data
     manifold_x = (arr.X - np.mean(arr.X)).tolist()

@@ -24,7 +24,7 @@ function App() {
     const num = parseFloat(value);
     if (isNaN(num)) return null;
     if (min !== null && num < min) return null;
-    if (max !== null && num > max) return null;
+    if (max !== null && num >= max) return null;
     return num;
   };
   
@@ -49,8 +49,8 @@ function App() {
     const num_elem = sanitizeInteger(data.num_elem, 1, 1000);
     if (num_elem === null) errors.push('num_elem must be an integer between 1 and 1000');
     
-    const element_spacing = sanitizeNumber(data.element_spacing, 0.1, 10.0);
-    if (element_spacing === null) errors.push('element_spacing must be a number between 0.1 and 10.0');
+    const element_spacing = sanitizeNumber(data.element_spacing, 0.1, 5.01);
+    if (element_spacing === null) errors.push('element_spacing must be a number between 0.1 and 5.0');
     
     const scan_angle = sanitizeNumber(data.scan_angle, -90, 90);
     if (scan_angle === null) errors.push('scan_angle must be a number between -90 and 90');
@@ -251,7 +251,7 @@ function App() {
 
   const handlePlanarIntegerInputChange = (value, index, setter) => {
     // Sanitize to integer immediately
-    const sanitized = sanitizeInteger(value, 1, 1000);
+    const sanitized = sanitizeInteger(value, 1, 500);
     if (sanitized !== null) {
       const currentArray = [...planarNumElem];
       currentArray[index] = sanitized;
@@ -389,6 +389,14 @@ function App() {
         setLoading(false);
         return;
       }
+      
+      // Check maximum spacing limit (5.0 wavelengths)
+      if (spacing.some(val => val > 5.0)) {
+        setError('Element spacing values must be between 0.1 and 5.0 wavelengths.');
+        setLoading(false);
+        return;
+      }
+      
       validatedElementSpacing = spacing;
     }
     
@@ -2383,20 +2391,20 @@ function App() {
                     y: y,
                     z: zTransposed,
                     colorscale: 'Hot',
-                                          contours: {
-                        coloring: 'heatmap',
+                    contours: {
+                      coloring: 'heatmap',
                         showlabels: true,
                         // Use blue colors for contour lines
                         labelfont: { color: 'blue', size: 12 },
                         line: { color: 'blue', width: 1, dash: 'dashdot' }
-                      },
+                    },
                       // Override default black contour lines with blue
                       line: { color: 'blue', width: 1, dash: 'dashdot' },
-                                      colorbar: {
-                    title: 'Gain (dB)',
-                    titleside: 'right'
-                  },
-                  zmin: contourData.peak - contourData.g_range,
+                    colorbar: {
+                      title: 'Gain (dB)',
+                      titleside: 'right'
+                    },
+                    zmin: contourData.peak - contourData.g_range,
                   zmax: contourData.peak,
                   hovertemplate: `
                     <b>φ:</b> %{x:.1f}°<br>

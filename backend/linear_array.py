@@ -86,8 +86,9 @@ class LinearArray():
                 
         if not any(self.theta):
             HPBW = 51 / array_length
-            Nt = int(180 / (HPBW / 4))
-            Nt = Nt + (Nt+1) % 2 # making Nt an odd number
+            Nt = int(180 / (HPBW / 2))
+            if Nt % 2 == 0:
+                Nt = Nt + 1
             Nt = max(Nt,181) # 181 point is at least 1 degree theta resolution
             self.theta = np.linspace(-90,90,Nt)
             self.AF = self.calc_AF_()          

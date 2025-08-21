@@ -24,7 +24,7 @@ class Config:
     
     # Security Configuration
     MAX_ELEMENTS = int(os.environ.get('MAX_ELEMENTS', 1000))  # Maximum array elements
-    MAX_SPACING = float(os.environ.get('MAX_SPACING', 10.0))  # Maximum element spacing
+    MAX_SPACING = float(os.environ.get('MAX_SPACING', 5.0))  # Maximum element spacing
     
     # Logging Configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')

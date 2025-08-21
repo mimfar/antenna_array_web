@@ -79,7 +79,7 @@ const LinearArrayForm = ({
           />
         </label>
         <div id="element-spacing-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-          Spacing in wavelengths (minimum 0.1λ)
+          Spacing in wavelengths (between 0.1λ and 5.0λ)
         </div>
       </div>
 

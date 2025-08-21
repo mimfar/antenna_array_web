@@ -53,7 +53,7 @@ const PlanarArrayForm = ({
 
   const totalElements = getTotalElements();
   const maxElements = 1000; // Should match backend config
-  const maxSpacing = 10.0; // Should match backend config
+  const maxSpacing = 5.01; // Should match backend config (allows 5.0)
   return (
     <form onSubmit={handlePlanarSubmit} aria-labelledby="planar-array-title">
       <h2 id="planar-array-title">Planar Array Analysis</h2>
@@ -90,7 +90,7 @@ const PlanarArrayForm = ({
                   type="number"
                   step="1"
                   min="1"
-                  max="1000"
+                  max="500"
                   value={numElem[0]}
                   onChange={e => handlePlanarIntegerInputChange(e.target.value, 0, setNumElem)}
                   required
@@ -105,7 +105,7 @@ const PlanarArrayForm = ({
                   type="number"
                   step="1"
                   min="1"
-                  max="1000"
+                  max="500"
                   value={numElem[1]}
                   onChange={e => handlePlanarIntegerInputChange(e.target.value, 1, setNumElem)}
                   required
@@ -183,7 +183,7 @@ const PlanarArrayForm = ({
               </label>
             </div>
             <div id="spacing-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-              Spacing range: 0.1 to {maxSpacing} wavelengths
+              Spacing in wavelengths (between 0.1λ and 5.0λ)
               {(elementSpacing[0] > maxSpacing || elementSpacing[1] > maxSpacing) && (
                 <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>
                   {' '}⚠️ Exceeds limit
@@ -301,7 +301,7 @@ const PlanarArrayForm = ({
               </label>
             </div>
             <div id="spacing-tri-help" style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-              Spacing range: 0.1 to {maxSpacing} wavelengths
+              Spacing in wavelengths (between 0.1λ and 5.0λ)
               {(elementSpacing[0] > maxSpacing || elementSpacing[1] > maxSpacing) && (
                 <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>
                   {' '}⚠️ Exceeds limit

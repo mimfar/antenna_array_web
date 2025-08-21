@@ -99,9 +99,9 @@ class PlanarArray():
             if Nt % 2 == 0:
                 Nt = Nt + 1
             Nt = max(Nt,181) # 181 point is at least 1 degree theta resolution
-            self.theta = np.linspace(0,180,Nt)
+            self.theta = np.linspace(0,180,Nt,dtype=np.float32)
         if not any(self.phi):
-            self.phi = np.linspace(0,360,361)
+            self.phi = np.linspace(0,360,361,dtype=np.float32)
         
     # @classmethod
     # def from_element_position(cls,X,**kwargs):
@@ -148,7 +148,7 @@ class PlanarArray():
         phi = self.phi.reshape(-1,1)
         CPST = np.matmul(np.cos(phi * PI/180),np.sin(theta * PI/180))
         SPST = np.matmul(np.sin(phi * PI/180),np.sin(theta * PI/180))
-        
+
         AFcol = np.zeros(CPST.shape, dtype=complex)
 
         for i in range(len(self.col)):
