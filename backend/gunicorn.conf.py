@@ -8,7 +8,7 @@ backlog = 2048
 workers = 2
 worker_class = "sync"
 worker_connections = 1000
-timeout = 30
+timeout = 180
 keepalive = 2
 
 # Restart workers after this many requests, to help prevent memory leaks
@@ -16,8 +16,8 @@ max_requests = 1000
 max_requests_jitter = 50
 
 # Logging
-accesslog = "-"
-errorlog = "-"
+# accesslog = "-"
+# errorlog = "-"
 loglevel = "info"
 
 # Process naming
