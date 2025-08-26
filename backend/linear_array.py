@@ -86,7 +86,7 @@ class LinearArray():
                 
         if not any(self.theta):
             HPBW = 51 / array_length
-            Nt = int(180 / (HPBW / 2))
+            Nt = int(180 / (HPBW / 4))
             if Nt % 2 == 0:
                 Nt = Nt + 1
             Nt = max(Nt,181) # 181 point is at least 1 degree theta resolution

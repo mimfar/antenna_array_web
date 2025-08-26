@@ -855,7 +855,7 @@ function App() {
   // Reusable simple legend component for non-pattern-cut plots
   const renderSimpleLegend = (result, planarArrayType, planarNumElemRaw, planarElementSpacing, planarRadiusRaw, planarCutAngle, dataCheck) => {
     return (
-      <div className="legend-container" style={{ flex: '0 0 20%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
+      <div className="legend-container" style={{ flex: '0 0 25%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <h3 style={{ fontSize: 15, margin: 0 }}>Current Analysis</h3>
         </div>
@@ -1283,7 +1283,7 @@ function App() {
         {/* Main results area */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
           {/* Plot area */}
-          <div className="plot-container" style={{ flex: '0 0 55%', minWidth: 400, maxWidth: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
+          <div className="plot-container" style={{ flex: '0 0 70%', minWidth: 400, maxWidth: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
           <Plot
               data={getPlotData()}
               layout={getPlotLayout()}
@@ -1431,7 +1431,7 @@ function App() {
             </div>
           </div>
           {/* Legend area */}
-          <div className="legend-container" style={{ flex: '0 0 20%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
+          <div className="legend-container" style={{ flex: '0 0 25%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h3 style={{ fontSize: 15, margin: 0 }}>Legend</h3>
               <div style={{ display: 'flex', gap: 4 }}>
@@ -1861,7 +1861,7 @@ function App() {
             {/* Main results area with plot and legend */}
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
               {/* Plot area */}
-              <div className="plot-container" style={{ flex: '0 0 55%', minWidth: 400, maxWidth: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
+              <div className="plot-container" style={{ flex: '0 0 70%', minWidth: 400, maxWidth: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
                 <Plot
                   key={`pattern-cut-${planarPlotType}-${planarCoordinateType}`}
                   data={getPlanarPlotData()}
@@ -1971,7 +1971,7 @@ function App() {
               </div>
               
                             {/* Legend area */}
-              <div className="legend-container" style={{ flex: '0 0 20%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
+              <div className="legend-container" style={{ flex: '0 0 25%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <h3 style={{ fontSize: 15, margin: 0 }}>Legend</h3>
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -2125,7 +2125,7 @@ function App() {
             {/* Main results area with plot and legend */}
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
               {/* Plot area */}
-              <div className="plot-container" style={{ flex: '0 0 55%', minWidth: 400, maxWidth: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
+              <div className="plot-container" style={{ flex: '0 0 70%', minWidth: 400, maxWidth: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
             <Plot
                   key={`manifold-${planarPlotType}`}
                   data={[{
@@ -2169,7 +2169,7 @@ function App() {
               </div>
               
               {/* Legend area */}
-              <div className="legend-container" style={{ flex: '0 0 20%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
+              <div className="legend-container" style={{ flex: '0 0 25%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <h3 style={{ fontSize: 15, margin: 0 }}>Current Analysis</h3>
                 </div>
@@ -2221,7 +2221,7 @@ function App() {
             {/* Main results area with plot and legend */}
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
               {/* Plot area */}
-              <div className="plot-container" style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0, flex: '0 0 55%', minWidth: 400, maxWidth: '100%' }}>
+              <div className="plot-container" style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0, flex: '0 0 70%', minWidth: 400, maxWidth: '100%' }}>
             {(() => {
               // Safety check for complete polar3d data structure
               if (!result.data_polar3d.array_x || !result.data_polar3d.array_y || !result.data_polar3d.x || !result.data_polar3d.y || !result.data_polar3d.z) {
@@ -2362,7 +2362,7 @@ function App() {
             {/* Main results area with plot and legend */}
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
               {/* Plot area */}
-              <div className="plot-container" style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0, flex: '0 0 55%', minWidth: 400, maxWidth: '100%' }}>
+              <div className="plot-container" style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0, flex: '0 0 70%', minWidth: 400, maxWidth: '100%' }}>
             {(() => {
               // Debug: Log the data structure
               // console.log('Contour data:', result.data);
@@ -2417,7 +2417,7 @@ function App() {
                     height: 600, // 1:1 aspect ratio (square)
                     title: 'Antenna Array Pattern Contour',
                     xaxis: {
-                      title: 'φ (degrees)',
+                      title: { text: 'φ (degrees)', font: { color: 'black', size: 14 } },
                       range: [-180, 180],
                       type: 'linear',
                       autorange: false,
@@ -2427,7 +2427,7 @@ function App() {
                       ticktext: ['-180°', '-150°', '-120°', '-90°', '-60°', '-30°', '0°', '30°', '60°', '90°', '120°', '150°', '180°']
                     },
                     yaxis: {
-                      title: 'θ (degrees)',
+                      title: { text: 'θ (degrees)', font: { color: 'black', size: 14 } },
                       range: [0, 180],
                       type: 'linear',
                       autorange: false,
@@ -2458,7 +2458,7 @@ function App() {
             {/* Main results area with plot and legend */}
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
               {/* Plot area */}
-              <div className="plot-container" style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0, flex: '0 0 55%', minWidth: 400, maxWidth: '100%' }}>
+              <div className="plot-container" style={{ background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0, flex: '0 0 70%', minWidth: 400, maxWidth: '100%' }}>
             <img 
               src={`data:image/png;base64,${result.plot}`} 
               alt="Polar Surface Pattern"

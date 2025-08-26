@@ -104,21 +104,6 @@ const LinearArrayForm = ({
         </div>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <label htmlFor="plot-type">
-          Plot Type:
-          <select 
-            id="plot-type"
-            value={plotType} 
-            onChange={e => handleLinearInputChange(() => setPlotType(e.target.value))} 
-            style={{ width: '100%', maxWidth: '120px', marginLeft: 8 }}
-          >
-            <option value="cartesian">Cartesian</option>
-            <option value="polar">Polar</option>
-          </select>
-        </label>
-      </div>
-
       <fieldset style={{ marginBottom: 16, border: '1px solid #ccc', padding: 12, borderRadius: 4 }}>
         <legend>Amplitude Tapering</legend>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
