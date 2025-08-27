@@ -9,7 +9,7 @@ import PlanarArrayForm from './components/PlanarArrayForm';
  * This component provides a comprehensive interface for analyzing linear and planar antenna arrays.
  * Features include:
  * - Linear array analysis with cartesian/polar plotting
- * - Planar array analysis with pattern cuts and manifold visualization
+ * - Planar array analysis with pattern cuts and grid visualization
  * - Trace management (keep/clear/compare multiple plots)
  * - Interactive legend with show/hide controls
  * - Real-time parameter updates
@@ -120,6 +120,8 @@ function App() {
   const [elementGain, setElementGain] = useState(5);            // Element gain in dB
   const [annotate, setAnnotate] = useState(false);              // Show pattern annotations (peak, SLL, HPBW)
   const [plotType, setPlotType] = useState('cartesian');        // Plot type: 'cartesian' or 'polar'
+  const [linearPlotType, setLinearPlotType] = useState('pattern_cut');  // Linear plot type: 'pattern_cut' or 'array_excitation'
+  const [showGrid, setShowGrid] = useState(false);              // Show/hide array grid plot
   const [window, setWindow] = useState('');                     // Window function type (hann, hamming, etc.)
   const [SLL, setSLL] = useState(20);                           // Side lobe level for SLL-based tapering
   const [windowType, setWindowType] = useState('window');       // Tapering method: 'window' or 'SLL'
@@ -137,7 +139,7 @@ function App() {
   const [planarWindow, setPlanarWindow] = useState('');                     // Window function type
   const [planarSLL, setPlanarSLL] = useState(20);                           // Side lobe level
   const [planarWindowType, setPlanarWindowType] = useState('window');       // Tapering method
-  const [planarPlotType, setPlanarPlotType] = useState('pattern_cut');      // Plot type: 'pattern_cut', 'manifold'
+  const [planarPlotType, setPlanarPlotType] = useState('polar3d');      // Plot type: 'pattern_cut', 'grid'
   const [planarCoordinateType, setPlanarCoordinateType] = useState('cartesian');  // Coordinate type: 'cartesian' or 'polar'
   const [planarCutAngle, setPlanarCutAngle] = useState(0);                  // Pattern cut angle in degrees
   
@@ -302,7 +304,8 @@ function App() {
           window: windowType === 'window' ? (window || null) : null,
           SLL: windowType === 'SLL' ? Number(SLL) : null,
           plot_type: plotType,
-          show_manifold: true
+          linear_plot_type: linearPlotType,
+          show_grid: true
         }),
         signal: controller.signal
       });
@@ -600,7 +603,7 @@ function App() {
       debounceAnalysis(analyzeLinearArray, 100);
     }
     // Optionally, you could clear the result or show a message if invalid
-  }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern, plotType, activeTab, realtime]);
+  }, [numElem, elementSpacing, scanAngle, window, SLL, windowType, elementPattern, activeTab, realtime]);
 
   // Add useEffect to auto-analyze when element gain changes for linear array
   useEffect(() => {
@@ -621,7 +624,7 @@ function App() {
     if (realtime) {
     if (activeTab !== 'planar') return;
     // Trigger for all plot types including 3D plots
-    if (!['pattern_cut', 'manifold', 'polar3d', 'contour', 'polarsurf'].includes(planarPlotType)) return;
+    if (!['pattern_cut', 'grid', 'polar3d', 'contour', 'polarsurf'].includes(planarPlotType)) return;
 
     // Clear array key when array parameters change (to avoid using stale cached data)
     // This ensures we do a full analysis when any array parameter changes
@@ -906,7 +909,7 @@ function App() {
   // Reusable simple pattern parameters table for non-pattern-cut plots
   const renderSimplePatternParams = (result) => {
     return (
-      <div style={{ marginTop: 50, padding: '0 16px 16px 16px' }}>
+      <div style={{ marginTop: 20, padding: '0 16px 16px 16px' }}>
         <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', color: '#333' }}>Pattern Parameters</h4>
         <table style={{ borderCollapse: 'collapse', width: '100%', background: '#fff' }}>
           <thead>
@@ -954,8 +957,170 @@ function App() {
 
 
   /**
+   * Renders the array excitation plot for linear arrays
+   * Shows amplitude and phase of array elements against array position
+   */
+  const renderArrayExcitationPlot = () => {
+    if (!result || !result.grid || !result.amplitude || !result.phase) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+          Array excitation data not available. Please run the analysis first.
+        </div>
+      );
+    }
+
+    // Flatten the nested arrays from backend
+    const gridPositions = Array.isArray(result.grid[0]) ? result.grid[0] : result.grid;
+    const amplitudes = Array.isArray(result.amplitude[0]) ? result.amplitude[0] : result.amplitude;
+    const phases = Array.isArray(result.phase[0]) ? result.phase[0] : result.phase;
+
+    const plotData = [
+      // Amplitude subplot
+      {
+        x: gridPositions,
+        y: amplitudes,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Amplitude',
+        line: { color: '#0074D9', width: 3 },
+        marker: { size: 8, color: '#0074D9' },
+        xaxis: 'x',
+        yaxis: 'y'
+      },
+      // Phase subplot
+      {
+        x: gridPositions,
+        y: phases,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Phase',
+        line: { color: '#FF4136', width: 3 },
+        marker: { size: 8, color: '#FF4136' },
+        xaxis: 'x2',
+        yaxis: 'y2'
+      }
+    ];
+
+    const layout = {
+      width: undefined,
+      height: 325,
+      title: {
+        text: '<b>Array Element Excitation<b>',
+        font: { size: 16, color: '#222' },
+        xref: 'paper',
+        x: 0.5
+      },
+      // Amplitude subplot (top)
+      xaxis: {
+        title: { text: 'Array Position (λ)', font: { size: 14, color: 'black' } },
+        showgrid: true,
+        zeroline: true,
+        gridcolor: '#f0f0f0',
+        domain: [0, 1]
+      },
+      yaxis: {
+        title: { text: 'Amplitude', font: { size: 12, color: '#0074D9' } },
+        showgrid: true,
+        zeroline: true,
+        gridcolor: '#f0f0f0',
+        domain: [0.55, 1]
+      },
+      // Phase subplot (bottom)
+      xaxis2: {
+        title: { text: 'Array Position (λ)', font: { size: 12, color: 'black' } },
+        showgrid: true,
+        zeroline: true,
+        gridcolor: '#f0f0f0',
+        domain: [0, 1]
+      },
+      yaxis2: {
+        title: { text: 'Phase (degrees)', font: { size: 12, color: '#FF4136' } },
+        showgrid: true,
+        zeroline: true,
+        gridcolor: '#f0f0f0',
+        domain: [0, 0.45],
+        range: [-180, 180],
+        tickmode: 'array',
+        tickvals: [-180, -90, 0, 90, 180],
+        ticktext: ['-180°', '-90°', '0°', '90°', '180°'],
+        showticklabels: true,
+        anchor: 'x2',
+        overlaying: 'y'
+      },
+      plot_bgcolor: '#fff',
+      paper_bgcolor: '#fff',
+      showlegend: true,
+      legend: {
+        x: 0.02,
+        y: 0.98,
+        bgcolor: 'rgba(255,255,255,0.8)',
+        bordercolor: '#ccc',
+        borderwidth: 1
+      },
+      margin: { l: 60, r: 60, t: 50, b: 50 }
+    };
+
+    return (
+      <div>
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ margin: '0 0 16px 0', color: '#333' }}>Array Excitation Analysis</h3>
+          <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: 14 }}>
+            Shows the amplitude and phase distribution across array elements.
+          </p>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
+          {/* Plot area */}
+          <div className="plot-container" style={{ flex: '0 0 55%', minWidth: 400, maxWidth: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 16 }}>
+            <Plot
+              data={plotData}
+              layout={layout}
+              config={{ responsive: true, displayModeBar: true }}
+            />
+          </div>
+          
+          {/* Legend area */}
+          <div className="legend-container" style={{ flex: '0 0 20%', minWidth: 200, maxWidth: 350, maxHeight: 374, overflow: 'auto', background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #eee', padding: 12, marginLeft: 8, alignSelf: 'flex-start' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h3 style={{ fontSize: 15, margin: 0 }}>Current Analysis</h3>
+            </div>
+            <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: 4 }}>Parameter</th>
+                  <th style={{ textAlign: 'left', padding: 4 }}>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: 4 }}>Number of Elements</td>
+                  <td style={{ padding: 4 }}>{numElem}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 4 }}>Element Spacing</td>
+                  <td style={{ padding: 4 }}>{elementSpacing} λ</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 4 }}>Scan Angle</td>
+                  <td style={{ padding: 4 }}>{scanAngle}°</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 4 }}>Window Type</td>
+                  <td style={{ padding: 4 }}>
+                    {windowType === 'window' ? (window ? window : 'no window') : `SLL=${SLL}`}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /**
    * Renders the linear array analysis results
-   * Includes pattern plot, legend, manifold plot, and pattern parameters table
+   * Includes pattern plot, legend, grid plot, and pattern parameters table
    * Uses helper functions to handle cartesian vs polar plot rendering
    */
   const renderLinearArrayResults = () => {
@@ -1277,6 +1442,34 @@ function App() {
           >
             {plotType === 'cartesian' ? 'Switch to Polar' : 'Switch to Cartesian'}
           </button>
+          <button 
+            onClick={() => setLinearPlotType(linearPlotType === 'array_excitation' ? 'pattern_cut' : 'array_excitation')} 
+            style={{ 
+              padding: '8px 16px',
+              fontSize: 14, 
+              background: linearPlotType === 'array_excitation' ? '#0074D9' : '#f5f5f5',
+              color: linearPlotType === 'array_excitation' ? 'white' : 'black',
+              border: '1px solid #ddd',
+              borderRadius: 4,
+              cursor: 'pointer'
+            }}
+          >
+            {linearPlotType === 'array_excitation' ? 'Hide Excitation' : 'Show Excitation'}
+          </button>
+          <button 
+            onClick={() => setShowGrid(!showGrid)} 
+            style={{ 
+              padding: '8px 16px',
+              fontSize: 14, 
+              background: showGrid ? '#0074D9' : '#f5f5f5',
+              color: showGrid ? 'white' : 'black',
+              border: '1px solid #ddd',
+              borderRadius: 4,
+              cursor: 'pointer'
+            }}
+          >
+            {showGrid ? 'Hide Grid' : 'Show Grid'}
+          </button>
         </div>
       )}
       
@@ -1338,14 +1531,14 @@ function App() {
               </button>
             </div>
             
-            {/* Manifold plot */}
-            {result && result.manifold && numElem <= 60 && (() => {
-              const x = Array.isArray(result.manifold[0]) ? result.manifold[0] : result.manifold;
+            {/* Grid plot */}
+            {showGrid && result && result.grid && (() => {
+              const x = Array.isArray(result.grid[0]) ? result.grid[0] : result.grid;
               const y = Array(x.length).fill(0);
               const markerSize = numElem > 30 ? 4 : 10;
               return (
                 <Plot
-                  key="manifold-plot"
+                  key="grid-plot"
                   data={[{
                       x,
                       y,
@@ -1378,13 +1571,111 @@ function App() {
                     autosize: true,
                   }}
                   config={{ responsive: true, displayModeBar: false, useResizeHandler: true }}
-                  style={{ marginTop: 50 }}
+                  style={{ marginTop: 20 }}
+                />
+              );
+            })()}
+            
+            {/* Array Excitation Plot */}
+            {linearPlotType === 'array_excitation' && result && result.grid && result.amplitude && result.phase && (() => {
+              // Flatten the nested arrays from backend
+              const gridPositions = Array.isArray(result.grid[0]) ? result.grid[0] : result.grid;
+              const amplitudes = Array.isArray(result.amplitude[0]) ? result.amplitude[0] : result.amplitude;
+              const phases = Array.isArray(result.phase[0]) ? result.phase[0] : result.phase;
+
+              const plotData = [
+                // Amplitude subplot
+                {
+                  x: gridPositions,
+                  y: amplitudes,
+                  type: 'scatter',
+                  mode: 'lines+markers',
+                  name: 'Amplitude',
+                  line: { color: '#0074D9', width: 3 },
+                  marker: { size: 8, color: '#0074D9' },
+                  xaxis: 'x',
+                  yaxis: 'y'
+                },
+                // Phase subplot
+                {
+                  x: gridPositions,
+                  y: phases,
+                  type: 'scatter',
+                  mode: 'lines+markers',
+                  name: 'Phase',
+                  line: { color: '#FF4136', width: 3 },
+                  marker: { size: 8, color: '#FF4136' },
+                  xaxis: 'x2',
+                  yaxis: 'y2'
+                }
+              ];
+
+              const layout = {
+                width: undefined,
+                height: 325,
+                title: {
+                  text: '<b>Array Element Excitation<b>',
+                  font: { size: 14, color: '#222' },
+                  xref: 'paper',
+                  x: 0.5
+                },
+                // Amplitude subplot (top)
+                xaxis: {
+                  showgrid: true,
+                  zeroline: true,
+                  gridcolor: '#f0f0f0',
+                  domain: [0, 1],
+                },
+                yaxis: {
+                  title: { text: 'Amplitude(dB)', font: { size: 14, color: '#0074D9' } },
+                  showgrid: true,
+                  zeroline: true,
+                  gridcolor: '#f0f0f0',
+                  domain: [0.55, 1]
+                },
+                // Phase subplot (bottom)
+                xaxis2: {
+                  title: { text: 'Array Position (λ)', font: { size: 14, color: 'black' } },
+                  showgrid: true,
+                  zeroline: true,
+                  gridcolor: '#f0f0f0',
+                  domain: [0, 1],
+                  side: 'bottom'
+                },
+                yaxis2: {
+                  title: { text: 'Phase (degrees)', font: { size: 14, color: '#FF4136' } },
+                  showgrid: true,
+                  zeroline: true,
+                  gridcolor: '#f0f0f0',
+                  domain: [0, 0.45],
+                  range: [-180, 180]
+                },
+                plot_bgcolor: '#fff',
+                paper_bgcolor: '#fff',
+                showlegend: true,
+                legend: {
+                  x: 0.02,
+                  y: 0.98,
+                  bgcolor: 'rgba(255,255,255,0.8)',
+                  bordercolor: '#ccc',
+                  borderwidth: 1
+                },
+                margin: { l: 60, r: 60, t: 50, b: 50 }
+              };
+
+              return (
+                <Plot
+                  key="array-excitation-plot"
+                  data={plotData}
+                  layout={layout}
+                  config={{ responsive: true, displayModeBar: true }}
+                  style={{ marginTop: 30 }}
                 />
               );
             })()}
             
             {/* Pattern parameters table */}
-            <div style={{ marginTop: 50, padding: '0 16px 16px 16px' }}>
+            <div style={{ marginTop: 20, padding: '0 16px 16px 16px' }}>
               <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', color: '#333' }}>Pattern Parameters</h4>
               <table style={{ borderCollapse: 'collapse', width: '100%', background: '#fff' }}>
                 <thead>
@@ -1562,7 +1853,7 @@ function App() {
 
   /**
    * Renders the planar array analysis results
-   * Supports pattern cuts, manifold visualization, and parameter display
+   * Supports pattern cuts, grid visualization, and parameter display
    * Includes full trace management features for pattern cut plots
    */
   const renderPlanarArrayResults = () => {
@@ -1920,7 +2211,7 @@ function App() {
 
                 
                 {/* Pattern parameters table */}
-                <div style={{ marginTop: 50, padding: '0 16px 16px 16px' }}>
+                <div style={{ marginTop: 20, padding: '0 16px 16px 16px' }}>
                   <h2>Pattern Parameters</h2>
                   <table style={{ borderCollapse: 'collapse', width: '100%', background: '#fff' }}>
                     <thead>
@@ -2120,17 +2411,17 @@ function App() {
       
             
         </>
-              ) : planarPlotType === 'manifold' ? (
+              ) : planarPlotType === 'grid' ? (
           <>
             {/* Main results area with plot and legend */}
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 24 }}>
               {/* Plot area */}
               <div className="plot-container" style={{ flex: '0 0 70%', minWidth: 400, maxWidth: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 1px 4px #eee', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', padding: 0 }}>
             <Plot
-                  key={`manifold-${planarPlotType}`}
+                  key={`grid-${planarPlotType}`}
                   data={[{
-                  x: result.manifold_x,
-                  y: result.manifold_y,
+                  x: result.grid_x,
+                  y: result.grid_y,
                   type: 'scatter',
                   mode: 'markers',
                   name: 'Array Elements',
@@ -2140,7 +2431,7 @@ function App() {
                     width: undefined,
                     height: 600, // 1:1 aspect ratio (square)
                 margin: { l: 50, r: 20, t: 30, b: 50 },
-                    title: { text: 'Array Manifold', font: { size: 16 } },
+                    title: { text: 'Array Grid', font: { size: 16 } },
                 xaxis: {
                       title: { text: 'X Position (λ)', font: { size: 14 } },
                   showgrid: true,

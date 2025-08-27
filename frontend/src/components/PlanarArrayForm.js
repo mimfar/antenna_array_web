@@ -452,8 +452,8 @@ const PlanarArrayForm = ({
             onChange={e => handlePlanarInputChange(() => setPlotType(e.target.value))} 
             style={{ width: '100%', maxWidth: '120px', marginLeft: 8 }}
           >
+            <option value="grid">Grid</option>
             <option value="pattern_cut">Pattern Cut</option>
-            <option value="manifold">Manifold</option>
             <option value="polar3d">3D Polar</option>
             <option value="contour">Contour</option>
             <option value="polarsurf">Polar Surface</option>

@@ -110,7 +110,7 @@ class LinearArray():
         AF = AF/ (AF_int ** 0.5)
         
         if self.element_pattern:
-            AF = AF * np.cos(np.radians(theta))
+            AF = AF * np.cos(np.radians(theta)) ** 0.3
             if self.element_gain:
                 AF = AF * 10**(self.element_gain/20)
         

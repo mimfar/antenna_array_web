@@ -240,7 +240,7 @@ class PlanarArray():
         #     plt.text(self.col[0]+ self.element_spacing[1]/2, self.row[1] ,str(self.element_spacing[1]),ha='center',va='center',backgroundcolor='white')
         plt.xlabel('wavelength')
         plt.ylabel('wavelength')
-        plt.title('Array Manifold')
+        plt.title('Array Grid')
         plt.axis('equal')
         return fig,ax
 

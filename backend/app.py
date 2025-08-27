@@ -384,12 +384,12 @@ def validate_array_parameters(array_type, num_elem, element_spacing, radius=None
     
     return False, f"Invalid array type: {array_type}"
 
-def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params, pattern_params_3d, cut_angle=None):
+def create_plot_response(plot_type, arr, grid_x, grid_y, pattern_params, pattern_params_3d, cut_angle=None):
     """Create standardized response for different plot types"""
     if plot_type == 'pattern_cut':
         base_response = {
-            'manifold_x': manifold_x,
-            'manifold_y': manifold_y,
+            'grid_x': grid_x,
+            'grid_y': grid_y,
             'gain': pattern_params.Gain,
             'gain_3d': pattern_params.Gain_3D,
             'peak_angle': pattern_params.Peak_Angle,
@@ -398,8 +398,8 @@ def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,
         }
     else:
         base_response = {
-            'manifold_x': manifold_x,
-            'manifold_y': manifold_y,
+            'grid_x': grid_x,
+            'grid_y': grid_y,
             'gain': pattern_params_3d.Gain,
             'gain_3d': pattern_params_3d.Gain_3D,
             'peak_angle': pattern_params_3d.Peak_Angle,
@@ -427,10 +427,10 @@ def create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,
             'ymax': ymax
         }
         
-    elif plot_type == 'manifold':
+    elif plot_type == 'grid':
         return {
-            'manifold_x': manifold_x,
-            'manifold_y': manifold_y,
+            'grid_x': grid_x,
+            'grid_y': grid_y,
             'array_type': 'rect'  # This should be passed as parameter
         }
         
@@ -526,7 +526,7 @@ def analyze_linear_array():
     plot_type = data.get('plot_type', 'cartesian')
     window = data.get('window', None)
     SLL = data.get('SLL', None)
-    show_manifold = data.get('show_manifold', False)
+    show_grid = data.get('show_grid', False)
     element_gain = data.get('element_gain', 0)
     
     # Generate cache key for linear array
@@ -580,7 +580,7 @@ def analyze_linear_array():
     pattern = db20(arr.AF)
     pattern[pattern<-100] = -100    
     pattern = pattern.tolist()
-    manifold = arr.X.tolist() if show_manifold else None
+    grid = arr.X.ravel().tolist() if show_grid else None
     
 
     
@@ -591,7 +591,9 @@ def analyze_linear_array():
     response = {
         'theta': theta,
         'pattern': pattern,
-        'manifold': manifold,
+        'grid': grid,
+        'phase':((np.rad2deg(arr.P.ravel()) + 180) % 360 -180).tolist(),
+        'amplitude':db20(arr.I.ravel()).tolist(),
         'gain': pattern_params.Gain,
         'peak_angle': pattern_params.Peak_Angle,
         'sll': pattern_params.SLL,
@@ -743,9 +745,9 @@ def analyze_planar_array():
     app.logger.info(f'AF size: {arr.AF.nbytes / (1024 * 1024):1.1f} MB')
     app.logger.info(f'AF shape: {arr.AF.shape}')
 
-    # Get manifold data
-    manifold_x = (arr.X - np.mean(arr.X)).tolist()
-    manifold_y = (arr.Y - np.mean(arr.Y)).tolist()
+    # Get grid data
+    grid_x = (arr.X - np.mean(arr.X)).tolist()
+    grid_y = (arr.Y - np.mean(arr.Y)).tolist()
     
     pattern_params = arr.calc_peak_sll_hpbw(cut_angle)
     pattern_params_3d = arr.calc_peak_sll_hpbw(scan_angle[1])
@@ -754,7 +756,7 @@ def analyze_planar_array():
    
     
     # Generate response based on plot type
-    response = create_plot_response(plot_type, arr, manifold_x, manifold_y, pattern_params,pattern_params_3d, cut_angle)
+    response = create_plot_response(plot_type, arr, grid_x, grid_y, pattern_params,pattern_params_3d, cut_angle)
     app.logger.info(f"Planar array analysis successful for array_type={array_type}, num_elem={num_elem}")
     return jsonify(response)
 
