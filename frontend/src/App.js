@@ -2969,14 +2969,38 @@ function App() {
         </div>
       </div>
 
-      {/* Feedback Button */}
+      {/* Tutorial and Feedback Buttons */}
       <div style={{
         position: 'fixed',
         top: window.innerWidth <= 768 ? 'auto' : 24,
         bottom: window.innerWidth <= 768 ? 24 : 'auto',
         right: window.innerWidth <= 768 ? 24 : 32,
-        zIndex: 1000
+        zIndex: 1000,
+        display: 'flex',
+        gap: 12
       }}>
+        <a
+          href="https://youtu.be/qtQDjt0yiOc"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            padding: 'clamp(8px, 2vw, 10px) clamp(16px, 3vw, 22px)',
+            background: '#0074D9',
+            color: 'white',
+            borderRadius: '6px',
+            fontWeight: 600,
+            textDecoration: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+            fontSize: 'clamp(14px, 2.5vw, 16px)',
+            letterSpacing: 0.5,
+            transition: 'background 0.2s',
+          }}
+          onMouseOver={e => e.currentTarget.style.background = '#005fa3'}
+          onMouseOut={e => e.currentTarget.style.background = '#0074D9'}
+        >
+          Tutorial
+        </a>
         <a
           href="https://forms.gle/wVhn4PmyDMxEJcD67"
           target="_blank"
