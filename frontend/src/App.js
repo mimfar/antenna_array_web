@@ -109,7 +109,7 @@ function App() {
   // ============================================================================
   
   // Tab navigation state
-  const [activeTab, setActiveTab] = useState('linear');
+  const [activeTab, setActiveTab] = useState('planar');
   
   // Linear array analysis parameters
   const [numElem, setNumElem] = useState(8);                    // Number of array elements
@@ -239,12 +239,19 @@ function App() {
   };
 
   const handleIntegerInputChange = (value, setter) => {
-    // Sanitize to integer immediately
-    const sanitized = sanitizeInteger(value, 1, 1000);
-    if (sanitized !== null) {
-      setter(sanitized);
-      // Don't trigger analysis here - the useEffect will handle it
+    // Allow empty string and valid integers, but prevent '0' as first digit
+    if (value === '') {
+      setter(value);
+    } else if (value === '0') {
+      // Don't allow '0' - ignore the input
+      return;
+    } else {
+      const sanitized = sanitizeInteger(value, 1, 1000);
+      if (sanitized !== null) {
+        setter(sanitized);
+      }
     }
+    // Don't trigger analysis here - the useEffect will handle it
   };
   const handlePlanarInputChange = (handler) => {
     handler();
@@ -252,14 +259,23 @@ function App() {
   };
 
   const handlePlanarIntegerInputChange = (value, index, setter) => {
-    // Sanitize to integer immediately
-    const sanitized = sanitizeInteger(value, 1, 500);
-    if (sanitized !== null) {
+    // Allow empty string and valid integers, but prevent '0' as first digit
+    if (value === '') {
       const currentArray = [...planarNumElem];
-      currentArray[index] = sanitized;
+      currentArray[index] = value;
       setter(currentArray);
-      // Don't trigger analysis here - the useEffect will handle it
+    } else if (value === '0') {
+      // Don't allow '0' - ignore the input
+      return;
+    } else {
+      const sanitized = sanitizeInteger(value, 1, 500);
+      if (sanitized !== null) {
+        const currentArray = [...planarNumElem];
+        currentArray[index] = sanitized;
+        setter(currentArray);
+      }
     }
+    // Don't trigger analysis here - the useEffect will handle it
   };
 
   // ============================================================================
